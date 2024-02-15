@@ -1,24 +1,22 @@
---Please note this information is experimental and it is only intended for use for management purposes.
 
-/****** Script for Unique Care Pathways Dashboard to produce the aggregated table for all graphs except the box plots ******/
-
------------------------------------------------------------------
--------------Aggregated Table for Unique Care Pathways
---This is an aggregated table based on [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
---It counts the number of PathwayIDs for each of the flags (Completion, Recovery, Not Caseness, Reliable Improvement and Reliable Deterioration)
--- used to calculate the outcome measures 
---The counts are calculated for different geographies (Provider, Sub-ICB, ICB and National), 
---categories (Problem descriptor, gender, gender identity, ethnicity, age, deprivation),
---and Unique Care Pathway
+/* ------------- Aggregated Table for Unique Care Pathways ----------------------------------------------------------------------
+This is an aggregated table based on [MHDInternal].[DASHBOARD_TTAD_UCP_Base] that counts the number of PathwayIDs for each of the 
+flags (Completion, Recovery, Not Caseness, Reliable Improvement and Reliable Deterioration) used to calculate the outcome measures.
+Counts are calculated for:
+-- Geographies (Provider, Sub-ICB, ICB and National), 
+-- Categories (Problem descriptor, gender, gender identity, ethnicity, age, deprivation),
+-- Unique Care Pathway 
+------------------------------------------------------------------------------------------ */
 
 IF OBJECT_ID ('[MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated]
-SELECT * 
-INTO [MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated]
+
+SELECT * INTO [MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated]
+
 FROM (
 
 -- Problem Descriptor
 SELECT
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -30,9 +28,9 @@ SELECT
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Problem Descriptor' AS Category
-	,[ProblemDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Problem Descriptor' AS [Category]
+	,[ProblemDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -52,7 +50,9 @@ SELECT
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration] 
 
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
-WHERE UniqueCarePathway IS NOT NULL
+
+WHERE [UniqueCarePathway] IS NOT NULL
+
 GROUP BY
 	Month
 	,[Region Name Comm]
@@ -67,14 +67,14 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[ProblemDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 
 UNION 
 
 -- Gender
 SELECT
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -86,9 +86,9 @@ SELECT
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Gender' AS Category
-	,[GenderDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Gender' AS [Category]
+	,[GenderDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -109,7 +109,9 @@ SELECT
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration]
 	
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
-WHERE UniqueCarePathway IS NOT NULL
+
+WHERE [UniqueCarePathway] IS NOT NULL
+
 GROUP BY
 	Month
 	,[Region Name Comm]
@@ -124,14 +126,14 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[GenderDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 
 UNION
 
 -- Ethnicity
 SELECT
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -143,9 +145,9 @@ SELECT
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Ethnicity' AS Category
-	,[EthnicityDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Ethnicity' AS [Category]
+	,[EthnicityDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -166,9 +168,11 @@ SELECT
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration] 
 
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
+
 WHERE UniqueCarePathway IS NOT NULL
+
 GROUP BY
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -181,13 +185,14 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[EthnicityDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 
 UNION 
--- Sub-query to provide aggregated data grouped by Provider & Gender Identity
-	SELECT
-	Month
+
+-- Aggregated data grouped by Provider & Gender Identity
+SELECT 
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -199,9 +204,9 @@ UNION
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Gender Identity' AS Category
-	,[GenderIdentityDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Gender Identity' AS [Category]
+	,[GenderIdentityDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -222,9 +227,11 @@ UNION
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration] 
 
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
+
 WHERE UniqueCarePathway IS NOT NULL
+
 GROUP BY
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -237,13 +244,14 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[GenderIdentityDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 
 UNION 
+
 -- Age
-	SELECT
-	Month
+SELECT
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -255,9 +263,9 @@ UNION
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Age' AS Category
-	,[AgeDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Age' AS [Category]
+	,[AgeDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -276,10 +284,13 @@ UNION
 	,SUM([NotCaseness]) AS [Not Caseness]
 	,SUM([CompTreatFlagRelImpFlag]) AS [Reliable Improvement]
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration] 
+
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
+
 WHERE UniqueCarePathway IS NOT NULL
+
 GROUP BY
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -292,14 +303,14 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[AgeDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 
 UNION 
  
 -- Deprivation
-	SELECT
-	Month
+SELECT
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -311,9 +322,9 @@ UNION
 	,[Provider Code]
 	,[Provider Name]
 	,[UniqueCarePathway]
-	,'Deprivation' AS Category
-	,[DeprivationDescriptor] AS Variable
-	,TreatmentCareContact_Count
+	,'Deprivation' AS [Category]
+	,[DeprivationDescriptor] AS [Variable]
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 	-- Classify [UniqueCarePathway] into 'Lower Intensity' and 'High Intensity' categories
 	,CASE WHEN [UniqueCarePathway] IN ('Guide Self-Help Book'
@@ -334,9 +345,11 @@ UNION
 	,SUM([CompTreatFlagRelDetFlag]) AS [Reliable Deterioration] 
 
 FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
+
 WHERE UniqueCarePathway IS NOT NULL
+
 GROUP BY
-	Month
+	[Month]
 	,[Region Name Comm]
 	,[Region Code Comm]
 	,[Region Code Prov]
@@ -349,6 +362,6 @@ GROUP BY
 	,[Provider Name]
 	,[UniqueCarePathway]
 	,[DeprivationDescriptor]
-	,TreatmentCareContact_Count
+	,[TreatmentCareContact_Count]
 	,[Numeric treatment count]
 )_
