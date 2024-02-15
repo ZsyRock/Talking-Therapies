@@ -1,11 +1,10 @@
--- DELETE MAX(Month) -----------------------------------------------------------------------
+SET DATEFIRST 1
+
+-- DELETE MAX(Month) -------------------------------------------------------------------------------------------------------------------------
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_LTC_Monthly] WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_LTC_Monthly])
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_LTC_MonthlyAverages] WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_LTC_MonthlyAverages])
 GO ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-SET DATEFIRST 1
-
--- Declare @Offset & @PeriodStart/End ----------------------------------------------------------------------
 DECLARE @Offset INT = 0
 DECLARE @Period_Start DATE = (SELECT DATEADD(MONTH,@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 DECLARE @Period_End DATE = (SELECT eomonth(DATEADD(MONTH,@Offset,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
@@ -27,8 +26,8 @@ SELECT
 	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS 'Provider Name'
 	,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END AS 'ICB Code'
 	,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END AS 'ICB Name'
-	,'Total' AS Category
-	,'Total' as 'Variable'
+	,'Total' AS [Category]
+	,'Total' as [Variable]
 -- Integrated Pathways
 	,CASE WHEN cc.[IAPTLTCServiceInd] = 'Y' THEN 'Integrated' ELSE 'Non-Integrated' END AS 'Integrated LTC'
 -- LongTerm Conditions
@@ -45,48 +44,49 @@ SELECT
 	,COUNT(DISTINCT CASE WHEN r.CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] AND r.ReliableImprovement_Flag = 'True' THEN r.PathwayID ELSE NULL END) AS 'Reliable Improvement'
 	,COUNT(DISTINCT CASE WHEN r.CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] AND r.NotCaseness_Flag = 'True' THEN r.PathwayID ELSE NULL END) AS 'NotCaseness'
 -- Referral Types
-	,CASE WHEN (r.SourceOfReferralMH = 'A1' OR r.SourceOfReferralIAPT = 'A1') THEN		'Primary Health Care: General Medical Practitioner Practice'
-		WHEN (r.SourceOfReferralMH = 'A2' OR r.SourceOfReferralIAPT = 'A2') THEN	'Primary Health Care: Health Visitor'
-		WHEN (r.SourceOfReferralMH = 'A3' OR r.SourceOfReferralIAPT = 'A3') THEN	'Other Primary Health Care'
-		WHEN (r.SourceOfReferralMH = 'A4' OR r.SourceOfReferralIAPT = 'A4') THEN	'Primary Health Care: Maternity Service'
-		WHEN (r.SourceOfReferralMH = 'B1' OR r.SourceOfReferralIAPT = 'B1') THEN	'Self Referral: Self'
-		WHEN (r.SourceOfReferralMH = 'B2' OR r.SourceOfReferralIAPT = 'B2') THEN	'Self Referral: Carer/Relative'
-		WHEN (r.SourceOfReferralMH = 'C1' OR r.SourceOfReferralIAPT = 'C1') THEN	'Local Authority and Other Public Services: Social Services'
-		WHEN (r.SourceOfReferralMH = 'C2' OR r.SourceOfReferralIAPT = 'C2') THEN	'Local Authority and Other Public Services: Education Service / Educational Establishment'
-		WHEN (r.SourceOfReferralMH = 'C3' OR r.SourceOfReferralIAPT = 'C3') THEN	'Local Authority and Other Public Services: Housing Service'
-		WHEN (r.SourceOfReferralMH = 'D1' OR r.SourceOfReferralIAPT = 'D1') THEN	'Employer'
-		WHEN (r.SourceOfReferralMH = 'D2' OR r.SourceOfReferralIAPT = 'D2') THEN	'Employer: Occupational Health'
-		WHEN (r.SourceOfReferralMH = 'E1' OR r.SourceOfReferralIAPT = 'E1') THEN	'Justice System: Police'
-		WHEN (r.SourceOfReferralMH = 'E2' OR r.SourceOfReferralIAPT = 'E2') THEN	'Justice System: Courts'
-		WHEN (r.SourceOfReferralMH = 'E3' OR r.SourceOfReferralIAPT = 'E3') THEN	'Justice System: Probation Service'
-		WHEN (r.SourceOfReferralMH = 'E4' OR r.SourceOfReferralIAPT = 'E4') THEN	'Justice System: Prison'
-		WHEN (r.SourceOfReferralMH = 'E5' OR r.SourceOfReferralIAPT = 'E5') THEN	'Justice System: Court Liaison and Diversion Service'
-		WHEN (r.SourceOfReferralMH = 'E6' OR r.SourceOfReferralIAPT = 'E6') THEN	'Justice System: Youth Offending Team'
-		WHEN (r.SourceOfReferralMH = 'F1' OR r.SourceOfReferralIAPT = 'F1') THEN	'Child Health: School Nurse'
-		WHEN (r.SourceOfReferralMH = 'F2' OR r.SourceOfReferralIAPT = 'F2') THEN	'Child Health: Hospital-based Paediatrics'
-		WHEN (r.SourceOfReferralMH = 'F3' OR r.SourceOfReferralIAPT = 'F3') THEN	'Child Health: Community-based Paediatrics'
-		WHEN (r.SourceOfReferralMH = 'G1' OR r.SourceOfReferralIAPT = 'G1') THEN	'Independent sector - Medium Secure Inpatients'
-		WHEN (r.SourceOfReferralMH = 'G2' OR r.SourceOfReferralIAPT = 'G2') THEN	'Independent Sector - Low Secure Inpatients'
-		WHEN (r.SourceOfReferralMH = 'G3' OR r.SourceOfReferralIAPT = 'G3') THEN	'Other Independent Sector Mental Health Services'
-		WHEN (r.SourceOfReferralMH = 'G4' OR r.SourceOfReferralIAPT = 'G4') THEN	'Voluntary Sector'
-		WHEN (r.SourceOfReferralMH = 'H1' OR r.SourceOfReferralIAPT = 'H1') THEN	'Acute Secondary Care: Emergency Care Department'
-		WHEN (r.SourceOfReferralMH = 'H2' OR r.SourceOfReferralIAPT = 'H2') THEN	'Other secondary care specialty'
-		WHEN (r.SourceOfReferralMH = 'I1' OR r.SourceOfReferralIAPT = 'I1') THEN	'Temporary transfer from another Mental Health NHS Trust'
-		WHEN (r.SourceOfReferralMH = 'I2' OR r.SourceOfReferralIAPT = 'I2') THEN	'Permanent transfer from another Mental Health NHS Trust'
-		WHEN (r.SourceOfReferralMH = 'M1' OR r.SourceOfReferralIAPT = 'M1') THEN	'Other: Asylum Services'
-		WHEN (r.SourceOfReferralMH = 'M2' OR r.SourceOfReferralIAPT = 'M2') THEN	'Other: Telephone or Electronic Access Service'
-		WHEN (r.SourceOfReferralMH = 'M3' OR r.SourceOfReferralIAPT = 'M3') THEN	'Other: Out of Area Agency'
-		WHEN (r.SourceOfReferralMH = 'M4' OR r.SourceOfReferralIAPT = 'M4') THEN	'Other: Drug Action Team / Drug Misuse Agency'
-		WHEN (r.SourceOfReferralMH = 'M5' OR r.SourceOfReferralIAPT = 'M5') THEN	'Other: Jobcentre Plus'
-		WHEN (r.SourceOfReferralMH = 'M6' OR r.SourceOfReferralIAPT = 'M6') THEN	'Other SERVICE or agency'
-		WHEN (r.SourceOfReferralMH = 'M7' OR r.SourceOfReferralIAPT = 'M7') THEN	'Other: Single Point of Access Service'
-		WHEN (r.SourceOfReferralMH = 'M8' OR r.SourceOfReferralIAPT = 'M8') THEN	'Debt agency'
-		WHEN (r.SourceOfReferralMH = 'N1' OR r.SourceOfReferralIAPT = 'N1') THEN	'Stepped up from low intensity Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'N2' OR r.SourceOfReferralIAPT = 'N2') THEN	'Stepped down from high intensity Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'N4' OR r.SourceOfReferralIAPT = 'N4') THEN	'Other Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'P1' OR r.SourceOfReferralIAPT = 'P1') THEN	'Internal Referral'
-		WHEN (r.SourceOfReferralMH = 'Q1' OR r.SourceOfReferralIAPT = 'Q1') THEN	'Mental Health Drop In Service'
-	END AS ReferralSource
+	,CASE 
+		WHEN (r.SourceOfReferralMH = 'A1' OR r.SourceOfReferralIAPT = 'A1') THEN 'Primary Health Care: General Medical Practitioner Practice'
+		WHEN (r.SourceOfReferralMH = 'A2' OR r.SourceOfReferralIAPT = 'A2') THEN 'Primary Health Care: Health Visitor'
+		WHEN (r.SourceOfReferralMH = 'A3' OR r.SourceOfReferralIAPT = 'A3') THEN 'Other Primary Health Care'
+		WHEN (r.SourceOfReferralMH = 'A4' OR r.SourceOfReferralIAPT = 'A4') THEN 'Primary Health Care: Maternity Service'
+		WHEN (r.SourceOfReferralMH = 'B1' OR r.SourceOfReferralIAPT = 'B1') THEN 'Self Referral: Self'
+		WHEN (r.SourceOfReferralMH = 'B2' OR r.SourceOfReferralIAPT = 'B2') THEN 'Self Referral: Carer/Relative'
+		WHEN (r.SourceOfReferralMH = 'C1' OR r.SourceOfReferralIAPT = 'C1') THEN 'Local Authority and Other Public Services: Social Services'
+		WHEN (r.SourceOfReferralMH = 'C2' OR r.SourceOfReferralIAPT = 'C2') THEN 'Local Authority and Other Public Services: Education Service / Educational Establishment'
+		WHEN (r.SourceOfReferralMH = 'C3' OR r.SourceOfReferralIAPT = 'C3') THEN 'Local Authority and Other Public Services: Housing Service'
+		WHEN (r.SourceOfReferralMH = 'D1' OR r.SourceOfReferralIAPT = 'D1') THEN 'Employer'
+		WHEN (r.SourceOfReferralMH = 'D2' OR r.SourceOfReferralIAPT = 'D2') THEN 'Employer: Occupational Health'
+		WHEN (r.SourceOfReferralMH = 'E1' OR r.SourceOfReferralIAPT = 'E1') THEN 'Justice System: Police'
+		WHEN (r.SourceOfReferralMH = 'E2' OR r.SourceOfReferralIAPT = 'E2') THEN 'Justice System: Courts'
+		WHEN (r.SourceOfReferralMH = 'E3' OR r.SourceOfReferralIAPT = 'E3') THEN 'Justice System: Probation Service'
+		WHEN (r.SourceOfReferralMH = 'E4' OR r.SourceOfReferralIAPT = 'E4') THEN 'Justice System: Prison'
+		WHEN (r.SourceOfReferralMH = 'E5' OR r.SourceOfReferralIAPT = 'E5') THEN 'Justice System: Court Liaison and Diversion Service'
+		WHEN (r.SourceOfReferralMH = 'E6' OR r.SourceOfReferralIAPT = 'E6') THEN 'Justice System: Youth Offending Team'
+		WHEN (r.SourceOfReferralMH = 'F1' OR r.SourceOfReferralIAPT = 'F1') THEN 'Child Health: School Nurse'
+		WHEN (r.SourceOfReferralMH = 'F2' OR r.SourceOfReferralIAPT = 'F2') THEN 'Child Health: Hospital-based Paediatrics'
+		WHEN (r.SourceOfReferralMH = 'F3' OR r.SourceOfReferralIAPT = 'F3') THEN 'Child Health: Community-based Paediatrics'
+		WHEN (r.SourceOfReferralMH = 'G1' OR r.SourceOfReferralIAPT = 'G1') THEN 'Independent sector - Medium Secure Inpatients'
+		WHEN (r.SourceOfReferralMH = 'G2' OR r.SourceOfReferralIAPT = 'G2') THEN 'Independent Sector - Low Secure Inpatients'
+		WHEN (r.SourceOfReferralMH = 'G3' OR r.SourceOfReferralIAPT = 'G3') THEN 'Other Independent Sector Mental Health Services'
+		WHEN (r.SourceOfReferralMH = 'G4' OR r.SourceOfReferralIAPT = 'G4') THEN 'Voluntary Sector'
+		WHEN (r.SourceOfReferralMH = 'H1' OR r.SourceOfReferralIAPT = 'H1') THEN 'Acute Secondary Care: Emergency Care Department'
+		WHEN (r.SourceOfReferralMH = 'H2' OR r.SourceOfReferralIAPT = 'H2') THEN 'Other secondary care specialty'
+		WHEN (r.SourceOfReferralMH = 'I1' OR r.SourceOfReferralIAPT = 'I1') THEN 'Temporary transfer from another Mental Health NHS Trust'
+		WHEN (r.SourceOfReferralMH = 'I2' OR r.SourceOfReferralIAPT = 'I2') THEN 'Permanent transfer from another Mental Health NHS Trust'
+		WHEN (r.SourceOfReferralMH = 'M1' OR r.SourceOfReferralIAPT = 'M1') THEN 'Other: Asylum Services'
+		WHEN (r.SourceOfReferralMH = 'M2' OR r.SourceOfReferralIAPT = 'M2') THEN 'Other: Telephone or Electronic Access Service'
+		WHEN (r.SourceOfReferralMH = 'M3' OR r.SourceOfReferralIAPT = 'M3') THEN 'Other: Out of Area Agency'
+		WHEN (r.SourceOfReferralMH = 'M4' OR r.SourceOfReferralIAPT = 'M4') THEN 'Other: Drug Action Team / Drug Misuse Agency'
+		WHEN (r.SourceOfReferralMH = 'M5' OR r.SourceOfReferralIAPT = 'M5') THEN 'Other: Jobcentre Plus'
+		WHEN (r.SourceOfReferralMH = 'M6' OR r.SourceOfReferralIAPT = 'M6') THEN 'Other SERVICE or agency'
+		WHEN (r.SourceOfReferralMH = 'M7' OR r.SourceOfReferralIAPT = 'M7') THEN 'Other: Single Point of Access Service'
+		WHEN (r.SourceOfReferralMH = 'M8' OR r.SourceOfReferralIAPT = 'M8') THEN 'Debt agency'
+		WHEN (r.SourceOfReferralMH = 'N1' OR r.SourceOfReferralIAPT = 'N1') THEN 'Stepped up from low intensity Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'N2' OR r.SourceOfReferralIAPT = 'N2') THEN 'Stepped down from high intensity Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'N4' OR r.SourceOfReferralIAPT = 'N4') THEN 'Other Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'P1' OR r.SourceOfReferralIAPT = 'P1') THEN 'Internal Referral'
+		WHEN (r.SourceOfReferralMH = 'Q1' OR r.SourceOfReferralIAPT = 'Q1') THEN 'Mental Health Drop In Service'
+	END AS [ReferralSource]
 -- Waits
 	,COUNT(DISTINCT CASE WHEN r.TherapySession_SecondDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] AND DATEDIFF(DD, r.TherapySession_FirstDate, r.TherapySession_SecondDate) <=28 THEN r.PathwayID ELSE NULL END) AS 'FirstToSecond28Days'
 	,COUNT(DISTINCT CASE WHEN r.TherapySession_SecondDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] AND DATEDIFF(DD, r.TherapySession_FirstDate, r.TherapySession_SecondDate) BETWEEN 29 AND 56 THEN r.PathwayID ELSE NULL END) AS 'FirstToSecond28To56Days'
@@ -102,22 +102,23 @@ SELECT
 	,COUNT(DISTINCT CASE WHEN cc.CareContDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] AND cc.AttendOrDNACode = '4' THEN cc.CareContactId ELSE NULL END) AS 'Appointment cancelled or postponed by the health care provider'
 
 FROM	[mesh_IAPT].[IDS101referral] r
-	---------------------------	
-	INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
-	---------------------------
-	INNER JOIN [mesh_IAPT].[IDS602longtermcondition] ltc ON r.recordnumber = ltc.recordnumber AND r.AuditID = ltc.AuditId AND r.UniqueSubmissionID = ltc.UniqueSubmissionID
-	---------------------------
-	LEFT JOIN [Internal_Reference].[ComCodeChanges] cd ON r.OrgIDComm = cd.Org_Code COLLATE database_default
-        LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cd.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
-	LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
-	---------------------------
-	LEFT JOIN [UKHD_SNOMED].[Descriptions_SCD_1] s2 ON ltc.[Validated_LongTermConditionCode] = CAST(s2.[Concept_ID] AS VARCHAR) AND s2.Type_ID = 900000000000003001 AND s2.Is_Latest = 1 AND s2.Active = 1
-	---------------------------
-	LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId 
+		---------------------------	
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
+		---------------------------
+		INNER JOIN [mesh_IAPT].[IDS602longtermcondition] ltc ON r.recordnumber = ltc.recordnumber AND r.AuditID = ltc.AuditId AND r.UniqueSubmissionID = ltc.UniqueSubmissionID
+		---------------------------
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cd ON r.OrgIDComm = cd.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cd.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [UKHD_SNOMED].[Descriptions_SCD_1] s2 ON ltc.[Validated_LongTermConditionCode] = CAST(s2.[Concept_ID] AS VARCHAR) AND s2.Type_ID = 900000000000003001 AND s2.Is_Latest = 1 AND s2.Active = 1
+		---------------------------
+		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId 
 
 WHERE	r.UsePathway_Flag = 'True' AND l.IsLatest = 1
-	AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start -- Set to -1 for monthly refresh
+		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start -- set to -1 for monthly refresh
 
 GROUP BY CAST(DATENAME(m, l.[ReportingPeriodStartDate]) + ' ' + CAST(DATEPART(yyyy, l.[ReportingPeriodStartDate]) AS VARCHAR) AS DATE)
 	,CASE WHEN cc.[IAPTLTCServiceInd] = 'Y' THEN 'Integrated' ELSE 'Non-Integrated' END
@@ -130,48 +131,49 @@ GROUP BY CAST(DATENAME(m, l.[ReportingPeriodStartDate]) + ' ' + CAST(DATEPART(yy
 	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END
 	,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END
 	,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END
-        ,CASE WHEN (r.SourceOfReferralMH = 'A1' OR r.SourceOfReferralIAPT = 'A1') THEN		'Primary Health Care: General Medical Practitioner Practice'
-		WHEN (r.SourceOfReferralMH = 'A2' OR r.SourceOfReferralIAPT = 'A2') THEN 	'Primary Health Care: Health Visitor'
-		WHEN (r.SourceOfReferralMH = 'A3' OR r.SourceOfReferralIAPT = 'A3') THEN	'Other Primary Health Care'
-		WHEN (r.SourceOfReferralMH = 'A4' OR r.SourceOfReferralIAPT = 'A4') THEN	'Primary Health Care: Maternity Service'
-		WHEN (r.SourceOfReferralMH = 'B1' OR r.SourceOfReferralIAPT = 'B1') THEN	'Self Referral: Self'
-		WHEN (r.SourceOfReferralMH = 'B2' OR r.SourceOfReferralIAPT = 'B2') THEN	'Self Referral: Carer/Relative'
-		WHEN (r.SourceOfReferralMH = 'C1' OR r.SourceOfReferralIAPT = 'C1') THEN	'Local Authority and Other Public Services: Social Services'
-		WHEN (r.SourceOfReferralMH = 'C2' OR r.SourceOfReferralIAPT = 'C2') THEN	'Local Authority and Other Public Services: Education Service / Educational Establishment'
-		WHEN (r.SourceOfReferralMH = 'C3' OR r.SourceOfReferralIAPT = 'C3') THEN	'Local Authority and Other Public Services: Housing Service'
-		WHEN (r.SourceOfReferralMH = 'D1' OR r.SourceOfReferralIAPT = 'D1') THEN	'Employer'
-		WHEN (r.SourceOfReferralMH = 'D2' OR r.SourceOfReferralIAPT = 'D2') THEN	'Employer: Occupational Health'
-		WHEN (r.SourceOfReferralMH = 'E1' OR r.SourceOfReferralIAPT = 'E1') THEN	'Justice System: Police'
-		WHEN (r.SourceOfReferralMH = 'E2' OR r.SourceOfReferralIAPT = 'E2') THEN	'Justice System: Courts'
-		WHEN (r.SourceOfReferralMH = 'E3' OR r.SourceOfReferralIAPT = 'E3') THEN	'Justice System: Probation Service'
-		WHEN (r.SourceOfReferralMH = 'E4' OR r.SourceOfReferralIAPT = 'E4') THEN	'Justice System: Prison'
-		WHEN (r.SourceOfReferralMH = 'E5' OR r.SourceOfReferralIAPT = 'E5') THEN	'Justice System: Court Liaison and Diversion Service'
-		WHEN (r.SourceOfReferralMH = 'E6' OR r.SourceOfReferralIAPT = 'E6') THEN	'Justice System: Youth Offending Team'
-		WHEN (r.SourceOfReferralMH = 'F1' OR r.SourceOfReferralIAPT = 'F1') THEN	'Child Health: School Nurse'
-		WHEN (r.SourceOfReferralMH = 'F2' OR r.SourceOfReferralIAPT = 'F2') THEN	'Child Health: Hospital-based Paediatrics'
-		WHEN (r.SourceOfReferralMH = 'F3' OR r.SourceOfReferralIAPT = 'F3') THEN	'Child Health: Community-based Paediatrics'
-		WHEN (r.SourceOfReferralMH = 'G1' OR r.SourceOfReferralIAPT = 'G1') THEN	'Independent sector - Medium Secure Inpatients'
-		WHEN (r.SourceOfReferralMH = 'G2' OR r.SourceOfReferralIAPT = 'G2') THEN	'Independent Sector - Low Secure Inpatients'
-		WHEN (r.SourceOfReferralMH = 'G3' OR r.SourceOfReferralIAPT = 'G3') THEN	'Other Independent Sector Mental Health Services'
-		WHEN (r.SourceOfReferralMH = 'G4' OR r.SourceOfReferralIAPT = 'G4') THEN	'Voluntary Sector'
-		WHEN (r.SourceOfReferralMH = 'H1' OR r.SourceOfReferralIAPT = 'H1') THEN	'Acute Secondary Care: Emergency Care Department'
-		WHEN (r.SourceOfReferralMH = 'H2' OR r.SourceOfReferralIAPT = 'H2') THEN	'Other secondary care specialty'
-		WHEN (r.SourceOfReferralMH = 'I1' OR r.SourceOfReferralIAPT = 'I1') THEN	'Temporary transfer from another Mental Health NHS Trust'
-		WHEN (r.SourceOfReferralMH = 'I2' OR r.SourceOfReferralIAPT = 'I2') THEN	'Permanent transfer from another Mental Health NHS Trust'
-		WHEN (r.SourceOfReferralMH = 'M1' OR r.SourceOfReferralIAPT = 'M1') THEN	'Other: Asylum Services'
-		WHEN (r.SourceOfReferralMH = 'M2' OR r.SourceOfReferralIAPT = 'M2') THEN	'Other: Telephone or Electronic Access Service'
-		WHEN (r.SourceOfReferralMH = 'M3' OR r.SourceOfReferralIAPT = 'M3') THEN	'Other: Out of Area Agency'
-		WHEN (r.SourceOfReferralMH = 'M4' OR r.SourceOfReferralIAPT = 'M4') THEN	'Other: Drug Action Team / Drug Misuse Agency'
-		WHEN (r.SourceOfReferralMH = 'M5' OR r.SourceOfReferralIAPT = 'M5') THEN	'Other: Jobcentre Plus'
-		WHEN (r.SourceOfReferralMH = 'M6' OR r.SourceOfReferralIAPT = 'M6') THEN	'Other SERVICE or agency'
-		WHEN (r.SourceOfReferralMH = 'M7' OR r.SourceOfReferralIAPT = 'M7') THEN	'Other: Single Point of Access Service'
-		WHEN (r.SourceOfReferralMH = 'M8' OR r.SourceOfReferralIAPT = 'M8') THEN	'Debt agency'
-		WHEN (r.SourceOfReferralMH = 'N1' OR r.SourceOfReferralIAPT = 'N1') THEN	'Stepped up from low intensity Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'N2' OR r.SourceOfReferralIAPT = 'N2') THEN	'Stepped down from high intensity Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'N4' OR r.SourceOfReferralIAPT = 'N4') THEN	'Other Improving Access to Psychological Therapies Service'
-		WHEN (r.SourceOfReferralMH = 'P1' OR r.SourceOfReferralIAPT = 'P1') THEN	'Internal Referral'
-		WHEN (r.SourceOfReferralMH = 'Q1' OR r.SourceOfReferralIAPT = 'Q1') THEN	'Mental Health Drop In Service'
-            END
+	,CASE 
+		WHEN (r.SourceOfReferralMH = 'A1' OR r.SourceOfReferralIAPT = 'A1') THEN 'Primary Health Care: General Medical Practitioner Practice'
+		WHEN (r.SourceOfReferralMH = 'A2' OR r.SourceOfReferralIAPT = 'A2') THEN 'Primary Health Care: Health Visitor'
+		WHEN (r.SourceOfReferralMH = 'A3' OR r.SourceOfReferralIAPT = 'A3') THEN 'Other Primary Health Care'
+		WHEN (r.SourceOfReferralMH = 'A4' OR r.SourceOfReferralIAPT = 'A4') THEN 'Primary Health Care: Maternity Service'
+		WHEN (r.SourceOfReferralMH = 'B1' OR r.SourceOfReferralIAPT = 'B1') THEN 'Self Referral: Self'
+		WHEN (r.SourceOfReferralMH = 'B2' OR r.SourceOfReferralIAPT = 'B2') THEN 'Self Referral: Carer/Relative'
+		WHEN (r.SourceOfReferralMH = 'C1' OR r.SourceOfReferralIAPT = 'C1') THEN 'Local Authority and Other Public Services: Social Services'
+		WHEN (r.SourceOfReferralMH = 'C2' OR r.SourceOfReferralIAPT = 'C2') THEN 'Local Authority and Other Public Services: Education Service / Educational Establishment'
+		WHEN (r.SourceOfReferralMH = 'C3' OR r.SourceOfReferralIAPT = 'C3') THEN 'Local Authority and Other Public Services: Housing Service'
+		WHEN (r.SourceOfReferralMH = 'D1' OR r.SourceOfReferralIAPT = 'D1') THEN 'Employer'
+		WHEN (r.SourceOfReferralMH = 'D2' OR r.SourceOfReferralIAPT = 'D2') THEN 'Employer: Occupational Health'
+		WHEN (r.SourceOfReferralMH = 'E1' OR r.SourceOfReferralIAPT = 'E1') THEN 'Justice System: Police'
+		WHEN (r.SourceOfReferralMH = 'E2' OR r.SourceOfReferralIAPT = 'E2') THEN 'Justice System: Courts'
+		WHEN (r.SourceOfReferralMH = 'E3' OR r.SourceOfReferralIAPT = 'E3') THEN 'Justice System: Probation Service'
+		WHEN (r.SourceOfReferralMH = 'E4' OR r.SourceOfReferralIAPT = 'E4') THEN 'Justice System: Prison'
+		WHEN (r.SourceOfReferralMH = 'E5' OR r.SourceOfReferralIAPT = 'E5') THEN 'Justice System: Court Liaison and Diversion Service'
+		WHEN (r.SourceOfReferralMH = 'E6' OR r.SourceOfReferralIAPT = 'E6') THEN 'Justice System: Youth Offending Team'
+		WHEN (r.SourceOfReferralMH = 'F1' OR r.SourceOfReferralIAPT = 'F1') THEN 'Child Health: School Nurse'
+		WHEN (r.SourceOfReferralMH = 'F2' OR r.SourceOfReferralIAPT = 'F2') THEN 'Child Health: Hospital-based Paediatrics'
+		WHEN (r.SourceOfReferralMH = 'F3' OR r.SourceOfReferralIAPT = 'F3') THEN 'Child Health: Community-based Paediatrics'
+		WHEN (r.SourceOfReferralMH = 'G1' OR r.SourceOfReferralIAPT = 'G1') THEN 'Independent sector - Medium Secure Inpatients'
+		WHEN (r.SourceOfReferralMH = 'G2' OR r.SourceOfReferralIAPT = 'G2') THEN 'Independent Sector - Low Secure Inpatients'
+		WHEN (r.SourceOfReferralMH = 'G3' OR r.SourceOfReferralIAPT = 'G3') THEN 'Other Independent Sector Mental Health Services'
+		WHEN (r.SourceOfReferralMH = 'G4' OR r.SourceOfReferralIAPT = 'G4') THEN 'Voluntary Sector'
+		WHEN (r.SourceOfReferralMH = 'H1' OR r.SourceOfReferralIAPT = 'H1') THEN 'Acute Secondary Care: Emergency Care Department'
+		WHEN (r.SourceOfReferralMH = 'H2' OR r.SourceOfReferralIAPT = 'H2') THEN 'Other secondary care specialty'
+		WHEN (r.SourceOfReferralMH = 'I1' OR r.SourceOfReferralIAPT = 'I1') THEN 'Temporary transfer from another Mental Health NHS Trust'
+		WHEN (r.SourceOfReferralMH = 'I2' OR r.SourceOfReferralIAPT = 'I2') THEN 'Permanent transfer from another Mental Health NHS Trust'
+		WHEN (r.SourceOfReferralMH = 'M1' OR r.SourceOfReferralIAPT = 'M1') THEN 'Other: Asylum Services'
+		WHEN (r.SourceOfReferralMH = 'M2' OR r.SourceOfReferralIAPT = 'M2') THEN 'Other: Telephone or Electronic Access Service'
+		WHEN (r.SourceOfReferralMH = 'M3' OR r.SourceOfReferralIAPT = 'M3') THEN 'Other: Out of Area Agency'
+		WHEN (r.SourceOfReferralMH = 'M4' OR r.SourceOfReferralIAPT = 'M4') THEN 'Other: Drug Action Team / Drug Misuse Agency'
+		WHEN (r.SourceOfReferralMH = 'M5' OR r.SourceOfReferralIAPT = 'M5') THEN 'Other: Jobcentre Plus'
+		WHEN (r.SourceOfReferralMH = 'M6' OR r.SourceOfReferralIAPT = 'M6') THEN 'Other SERVICE or agency'
+		WHEN (r.SourceOfReferralMH = 'M7' OR r.SourceOfReferralIAPT = 'M7') THEN 'Other: Single Point of Access Service'
+		WHEN (r.SourceOfReferralMH = 'M8' OR r.SourceOfReferralIAPT = 'M8') THEN 'Debt agency'
+		WHEN (r.SourceOfReferralMH = 'N1' OR r.SourceOfReferralIAPT = 'N1') THEN 'Stepped up from low intensity Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'N2' OR r.SourceOfReferralIAPT = 'N2') THEN 'Stepped down from high intensity Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'N4' OR r.SourceOfReferralIAPT = 'N4') THEN 'Other Improving Access to Psychological Therapies Service'
+		WHEN (r.SourceOfReferralMH = 'P1' OR r.SourceOfReferralIAPT = 'P1') THEN 'Internal Referral'
+		WHEN (r.SourceOfReferralMH = 'Q1' OR r.SourceOfReferralIAPT = 'Q1') THEN 'Mental Health Drop In Service'
+	END
 
 /* -- Employment Support Appointment Count ---------------------------------------------------------------------------------------------------------------------------------
 -- There is currently an issue with EmploymentSupport_Count field in IDS101referral table so we are calculating the number of employment support appointments in this table,
@@ -184,15 +186,15 @@ SELECT
 	r.PathwayID
 	,COUNT(DISTINCT CASE WHEN c.CareContDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate THEN c.CareContactID ELSE NULL END) AS Count_EmpSupp
 
-INTO [MHDInternal].[TEMP_TTAD_LTC_EmpSuppCount]
+INTO	[MHDInternal].[TEMP_TTAD_LTC_EmpSuppCount]
 
 FROM 	[mesh_IAPT].IDS101referral r
-	-----------------------------
-	INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
-	-----------------------------
-	LEFT JOIN [mesh_IAPT].[IDS201carecontact] c ON c.RecordNumber=r.RecordNumber AND r.[UniqueSubmissionID] = c.[UniqueSubmissionID] AND r.[AuditId] = c.[AuditId]
-	LEFT JOIN [mesh_IAPT].[IDS202careactivity] ca on c.PathwayID = ca.PathwayID and c.RecordNumber=ca.RecordNumber and c.CareContactID=ca.CareContactID and c.AuditId=ca.AuditId 
-	LEFT JOIN [mesh_IAPT].[IDS004empstatus] e ON r.RecordNumber=e.RecordNumber AND r.AuditId=e.AuditId
+		-----------------------------
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+		-----------------------------
+		LEFT JOIN [mesh_IAPT].[IDS201carecontact] c ON c.RecordNumber=r.RecordNumber AND r.[UniqueSubmissionID] = c.[UniqueSubmissionID] AND r.[AuditId] = c.[AuditId]
+		LEFT JOIN [mesh_IAPT].[IDS202careactivity] ca on c.PathwayID = ca.PathwayID and c.RecordNumber=ca.RecordNumber and c.CareContactID=ca.CareContactID and c.AuditId=ca.AuditId 
+		LEFT JOIN [mesh_IAPT].[IDS004empstatus] e ON r.RecordNumber=e.RecordNumber AND r.AuditId=e.AuditId
 
 WHERE l.IsLatest = 1
 AND (c.AttendOrDNACode IN (5,6) OR c.PlannedCareContIndicator='N') 
@@ -224,7 +226,7 @@ GROUP BY r.PathwayID
 IF OBJECT_ID('[MHDInternal].[TEMP_TTAD_LTC_MonthlyBase]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_LTC_MonthlyBase]
 	
 SELECT DISTINCT
-	CAST(DATENAME(m, l.[ReportingPeriodStartDate]) + ' ' + CAST(DATEPART(yyyy, l.[ReportingPeriodStartDate]) AS VARCHAR) AS DATE) AS 'Month'
+	CAST(DATENAME(m, l.[ReportingPeriodStartDate]) + ' ' + CAST(DATEPART(yyyy, l.[ReportingPeriodStartDate]) AS VARCHAR) AS DATE) AS [Month]
 	,r.[PathwayID]
 	,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END AS 'Sub-ICBCode'
 	,CASE WHEN ch.[Organisation_Name] IS NOT NULL THEN ch.[Organisation_Name] ELSE 'Other' END AS 'Sub-ICBName'
@@ -234,9 +236,8 @@ SELECT DISTINCT
 	,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'RegionCodeComm'
 	,CASE WHEN ph.[Organisation_Code] IS NOT NULL THEN ph.[Organisation_Code] ELSE 'Other' END AS 'ProviderCode'
 	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS 'ProviderName'
-
 	,CASE WHEN cc.[IAPTLTCServiceInd] = 'Y' THEN 'Integrated' ELSE 'Non-Integrated' END AS 'Integrated LTC'
-	,CASE WHEN s2.term IS NOT NULL THEN s2.term ELSE 'Not Stated' END AS Term	
+	,CASE WHEN s2.term IS NOT NULL THEN s2.term ELSE 'Not Stated' END AS [Term]
 --Appointments
 	,CASE WHEN r.CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] THEN ec.Count_EmpSupp ELSE NULL END AS 'EA Apps'
 	,CASE WHEN r.CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] THEN r.TreatmentCareContact_Count ELSE NULL END AS 'Care Contacts Apps'
@@ -280,26 +281,27 @@ SELECT DISTINCT
 	,CASE WHEN r.TherapySession_FirstDate BETWEEN l.[ReportingPeriodStartDate] AND l.[ReportingPeriodEndDate] THEN DATEDIFF(DD, r.ReferralRequestReceivedDate, r.TherapySession_FirstDate) ELSE NULL END
 	AS RefFirst
 
-INTO [MHDInternal].[TEMP_TTAD_LTC_MonthlyBase]
+INTO	[MHDInternal].[TEMP_TTAD_LTC_MonthlyBase]
 	
 FROM	[mesh_IAPT].[IDS101Referral] r
-	---------------------------	
-	INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
-	INNER JOIN [mesh_IAPT].[IDS602longtermcondition] ltc ON r.recordnumber = ltc.recordnumber AND r.AuditID = ltc.AuditId AND r.UniqueSubmissionID = ltc.UniqueSubmissionID
-	---------------------------
-	LEFT JOIN [UKHD_SNOMED].[Descriptions_SCD_1] s2 ON ltc.[Validated_LongTermConditionCode] = CAST(s2.[Concept_ID] AS VARCHAR) AND s2.Type_ID = 900000000000003001 AND s2.Is_Latest = 1 AND s2.Active = 1
-	LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId
-	LEFT JOIN [MHDInternal].[TEMP_TTAD_LTC_EmpSuppCount] ec ON ec.PathwayID=r.PathwayID
-	---------------------------
-	LEFT JOIN [Internal_Reference].[ComCodeChanges] cd ON r.OrgIDComm = cd.Org_Code COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cd.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
-	LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		---------------------------	
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
+		INNER JOIN [mesh_IAPT].[IDS602longtermcondition] ltc ON r.recordnumber = ltc.recordnumber AND r.AuditID = ltc.AuditId AND r.UniqueSubmissionID = ltc.UniqueSubmissionID
+		---------------------------
+		LEFT JOIN [UKHD_SNOMED].[Descriptions_SCD_1] s2 ON ltc.[Validated_LongTermConditionCode] = CAST(s2.[Concept_ID] AS VARCHAR) AND s2.Type_ID = 900000000000003001 AND s2.Is_Latest = 1 AND s2.Active = 1
+		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_LTC_EmpSuppCount] ec ON ec.PathwayID=r.PathwayID
+		---------------------------
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cd ON r.OrgIDComm = cd.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cd.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	r.UsePathway_Flag = 'True' AND l.IsLatest = 1
-	AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start -- Set to -1 for monthly refresh
+		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start -- set to -1 for monthly refresh
 	
-/* -- Averages Final Table ------------------------------------------------------------------------------------------------------------*/
+/* -- Averages Final Table ------------------------------------------------------------------------------------------------------------ */
 
 -- National (split by LTC Integrated and Non-Integrated, split by Term)
 
@@ -341,7 +343,7 @@ FROM [MHDInternal].[TEMP_TTAD_LTC_MonthlyBase]
 GROUP BY
 	[Month]
 	,[Integrated LTC]
-	,Term
+	,[Term]
 
 -- Region (split by LTC Integrated and Non-Integrated, split by Term)
 
