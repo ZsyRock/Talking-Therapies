@@ -38,8 +38,8 @@ SELECT DISTINCT
       ,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END AS 'ICB Name'
 		
       -- Ethnicity - Broad
-      ,CASE WHEN mpi.Validated_EthnicCategory IN ('B','C','D','E','F','G','H','J','K','L','M','N','P','R','S') THEN 'Ethnic Minorities'
-            WHEN mpi.Validated_EthnicCategory = 'A' THEN 'White British'
+      ,CASE WHEN mpi.[Validated_EthnicCategory] IN ('B','C','D','E','F','G','H','J','K','L','M','N','P','R','S') THEN 'Ethnic Minorities'
+            WHEN mpi.[Validated_EthnicCategory] = 'A' THEN 'White British'
             ELSE 'Other' 
       END AS 'Ethnicity - Broad'
 
@@ -221,13 +221,12 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		-------------------------
 		INNER JOIN [mesh_IAPT].[IDS001mpi] mpi ON r.recordnumber = mpi.recordnumber
 		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
-		-------------------------
-		---- Tables for up-to-date Sub-ICB/ICB/Region/Provider names/codes --------------------------------------
+		-- tables for up-to-date Sub-ICB/ICB/Region/Provider names/codes --------------------------------------
 		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
 		-------------------------
 		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	r.UsePathway_Flag = 'True' AND l.IsLatest = 1
 	AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart -- For monthly refresh the offset uses a value of '-1'
@@ -1062,9 +1061,9 @@ GROUP BY
 --------------------------------------------------------------------------------------------------
 PRINT 'Updated - [MHDInternal].[DASHBOARD_TTAD_ProtChar_Averages]' + CHAR(10)
 GO
----------------------------------------------------------------------------------------------------------------------
------------PEQs
-------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PEQs ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 DECLARE @Offset INT = 0
 DECLARE @PeriodStart AS DATE = (SELECT DATEADD(MONTH,@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 DECLARE @PeriodEnd AS DATE = (SELECT EOMONTH(DATEADD(MONTH,@Offset,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
@@ -1196,10 +1195,10 @@ WHERE	r.UsePathway_Flag = 'True' AND IsLatest = 1
 		,'747941000000105','747951000000108','747891000000106','747861000000100'
 		,'747871000000107','747881000000109','904691000000103')
 
---Final Aggregated PEQ Table		
+-- Final Aggregated PEQ Table	---------------------------------------------------------------------------------------------------------
 
---Ethnicity - Broad
---IF OBJECT_ID('[MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs]
+-- Ethnicity - Broad
+
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs]
 SELECT
       Month 
@@ -1208,7 +1207,7 @@ SELECT
       ,Question
       ,Answer
       ,COUNT(PathwayID) AS Count
---INTO [MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs]
+
 FROM [MHDInternal].[TEMP_TTAD_ProtChar_PEQBase]
 GROUP BY
       [Month]
@@ -1298,7 +1297,7 @@ GROUP BY
 
 PRINT 'Updated - [MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs]' + CHAR(10)
 
---Drop Temporary Tables
+-- Drop Temporary Tables ------------------------------------
 DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_SocPerCircRank]
 DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_Base]
 DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_PEQBase]
