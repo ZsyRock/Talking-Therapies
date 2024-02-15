@@ -6,7 +6,7 @@ DELETE FROM [MHDInternal].[DASHBOARD_TTAD_SocPersCircumstance] WHERE [Month] = (
 GO ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 DECLARE @Offset INT = 0 --  set to 0 for monthly refresh 
-----------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------
 DECLARE @PeriodStart AS DATE = (SELECT DATEADD(MONTH,@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 DECLARE @PeriodEnd AS DATE = (SELECT EOMONTH(DATEADD(MONTH,@Offset,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 DECLARE @MonthYear AS VARCHAR(50) = (DATENAME(M, @PeriodStart) + ' ' + CAST(DATEPART(YYYY, @PeriodStart) AS VARCHAR))

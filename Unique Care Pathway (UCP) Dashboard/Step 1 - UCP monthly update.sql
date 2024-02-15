@@ -1,37 +1,25 @@
---Please note this information is experimental and it is only intended for use for management purposes.
+SET DATEFIRST 1
 
-/****** Script for Unique Care Pathways Dashboard to produce the base table for the box plots ******/
+---- Delete the latest month from the following table so that the refreshed version of that month can be added -----------------------
+DELETE FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base] WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base])
 
--- DELETE MAX(Month) -----------------------------------------------------------------------
---Delete the latest month from the following table so that the refreshed version of that month can be added.
-
-DELETE FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
-WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_UCP_Base])
-
------------------------------------------------------------------
--------------Base Table for Unique Care Pathways
---This is a record-level base table with columns for the unique care pathway, outcome measures, protected characteristics and location.
---This table is used as the base of the aggregated table called [MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated]
-
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE
+/* ------------- Base Table for Unique Care Pathways -----------------------------------------------------------------------------------
+-- This is a record-level base table with columns for the unique care pathway, outcome measures, protected characteristics and location.
+-- This table is used as the base of the aggregated table called [MHDInternal].[DASHBOARD_TTAD_UCP_Aggregated] ------------------------- */
 
 -- Set the start and end dates of the reporting period based on the latest submission ID
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-
--- Set the first day of the week as Monday
-SET DATEFIRST 1
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
 PRINT @PeriodStart
 PRINT @PeriodEnd
 
--- When refreshing the dashboard each month, insert the latest month of data into [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
 --IF OBJECT_ID('[MHDInternal].[DASHBOARD_TTAD_UCP_Base]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_UCP_Base]
+
 SELECT DISTINCT
 	-- Extract the month from the reporting period start date
-	CONVERT(date, '01' + DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)) as Month
+	CONVERT(date, '01' + DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)) AS [Month]
 		
 	-- Set the region code and region name
 	,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS [Region Code Comm]
@@ -49,7 +37,7 @@ SELECT DISTINCT
 	,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END AS [ICB Code]
 	,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END AS [ICB Name]
 
-	,r.PathwayID AS [Pathway ID]
+	,r.[PathwayID] AS [Pathway ID]
 
 	-- Set the treatment care contact count, display '30+' if count is 30 or more
 	,CASE 
@@ -57,23 +45,22 @@ SELECT DISTINCT
 		ELSE CAST(TreatmentCareContact_Count AS VARCHAR)
 	END AS TreatmentCareContact_Count
 
-	,TreatmentCareContact_Count AS [Numeric treatment count]
+	,[TreatmentCareContact_Count] AS [Numeric treatment count]
 
 	--Creates a flag for those completing a course of treatment within the reporting period
-	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END AS CompTreatFlag
+	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END AS 'CompTreatFlag'
 
 	--Creates a flag for those completing a course of treatment within the reporting period and have the recovery flag
-	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.Recovery_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS CompTreatFlagRecFlag
+	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.Recovery_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS 'CompTreatFlagRecFlag'
 
 	--Creates a flag for those completing a course of treatment within the reporting period and have the not caseness flag
-	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.NotCaseness_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS NotCaseness
+	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.NotCaseness_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS 'NotCaseness'
 		
 	--Creates a flag for those completing a course of treatment within the reporting period and have the reliable improvement flag
-	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.ReliableImprovement_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS CompTreatFlagRelImpFlag
+	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.ReliableImprovement_Flag = 'TRUE'  and r.PathwayID is not null THEN 1 ELSE 0 END AS 'CompTreatFlagRelImpFlag'
 		
 	--Creates a flag for those completing a course of treatment within the reporting period and have the reliable deterioration flag
-	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.ReliableDeterioration_Flag = 'TRUE'
-	and r.PathwayID is not null THEN 1 ELSE 0 END AS CompTreatFlagRelDetFlag
+	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'TRUE' AND r.ReliableDeterioration_Flag = 'TRUE' and r.PathwayID is not null THEN 1 ELSE 0 END AS 'CompTreatFlagRelDetFlag'
 
 	--Defines the problem descriptors
 	,CASE WHEN r.PresentingComplaintHigherCategory = 'Depression' OR [PrimaryPresentingComplaint] = 'Depression' THEN 'F32 or F33 - Depression'
@@ -682,26 +669,17 @@ LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = 
 LEFT JOIN [mesh_IAPT].[IDS201carecontact] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId AND a.Unique_MonthID = l.Unique_MonthID
 LEFT JOIN [mesh_IAPT].[IDS202careactivity] c ON c.PathwayID = a.PathwayID AND c.AuditId = l.AuditId AND c.Unique_MonthID = l.Unique_MonthID AND a.[CareContactId] = c.[CareContactId] 
 
---Four tables joined to get Provider, Sub-ICB, ICB and Region codes and names
+-- Four tables joined to get Provider, Sub-ICB, ICB and Region codes and names --------------------------
 LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-	AND ch.Effective_To IS NULL
+LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+---------------------------------------------------------------------------------------------------------
 LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-	AND ph.Effective_To IS NULL
+LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
-WHERE	
---Filters for the latest data
-UsePathway_Flag = 'True'
-AND IsLatest = 1
-
---Defines the full time period included in the table
-AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart --for monthly refresh the offset should be -1 as we want the data for the latest 2 months month (i.e. to refresh the previous month's primary data)
-	
---Filters for at least 1 treatment session
-AND TreatmentCareContact_Count>0
-
---Filters for those who have completed treatment
-AND CompletedTreatment_Flag = 'TRUE'
+WHERE	UsePathway_Flag = 'True' 
+		AND IsLatest = 1
+		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart
+		AND TreatmentCareContact_Count > 0
+		AND CompletedTreatment_Flag = 'TRUE'
 
 ORDER BY 2
