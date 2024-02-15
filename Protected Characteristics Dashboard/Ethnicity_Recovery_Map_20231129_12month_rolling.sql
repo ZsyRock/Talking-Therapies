@@ -1,6 +1,8 @@
 
-/* Postcode Ranking -------------------------------------------------------------------------------------------------------------------------
--- Trust sites have more than one postcode so these are ranked by 'effective from' date, then alphabetically, so only one postcode is used -- */
+-- Update script for [MHDInternal].[DASHBOARD_TTAD_ProtChar_Ethnicity_Map_Rounded] ----------------------------------------------------------------------------------
+
+/* -- Postcode Ranking ---------------------------------------------------------------------------------------------------------------------
+Trust sites have more than one postcode so these are ranked by 'effective from' date, then alphabetically, so only one postcode is used -- */
 
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_ProtChar_Postcodes]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_Postcodes]
 
@@ -412,8 +414,8 @@ SET
 	,[WhiteBReliableRate]= b.[Reliable rate]
 	
 FROM [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate] a
-LEFT JOIN [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate_RecRel] b ON a.[ProviderCode]= b.[ProviderCode]
 
+LEFT JOIN [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate_RecRel] b ON a.[ProviderCode]= b.[ProviderCode]
 
 /* -- Rounding of variables ------------------------------------------------------------------------------------------------------
 -- Final table used in the dashboard - re-run each month so it contains the data for latest 12 months ---------------------------- */
