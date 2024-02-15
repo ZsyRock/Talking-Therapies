@@ -1,59 +1,60 @@
---Please note this information is experimental and it is only intended for use for management purposes.
 
-/****** Script for Internet Enabled Therapies Dashboard to produce tables for Appointments, Clinical Outcomes by Therapy Type, Clinical Outcomes by Problem Descriptor,
-Reason for Ending Treatment, Finished Treatment, Integration Engine, Severity, Pathway Type and PEQ ******/
-
--- DELETE MAX(Month) -----------------------------------------------------------------------
---Delete the latest month from the following table so that the refreshed version of that month can be added.
-
+-- DELETE MAX(Month) ----------------------------------------------------------------------
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
 WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_IET_PEQ])
 
+/* -- IET Appointments Clinical Time---------------------------------------------------------------------------------------------------------------
+-- This table calculates the total clinical time per PathwayID and therapy type for just IET Appointments with a duration time more than 0 minutes.
+-- This is used below to include the IET therapist time per treatment in the [MHDInternal].[TEMP_TTAD_IET_Base] 
+-- which is used in the averages script to calculate the average IET therapist time per treatment. ---------------------------------------------- */
 
------------------------------------------ IET Appointments Clinical Time--------------------------------
---This table calculates the total clinical time per PathwayID and therapy type for just IET Appointments with a duration time more than 0 minutes.
---This is used below to include the IET therapist time per treatment in the [MHDInternal].[TEMP_TTAD_IET_Base] 
---which is used in the averages script to calculate the average IET therapist time per treatment.
-
---The first step includes integrated software indicator so that it can be used in the next table
+-- The first step includes integrated software indicator so that it can be used in the next table ----------------------------------------------
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_TypeAndDuration_Step1]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration_Step1]
+
 SELECT  
-	i.PathwayID
-	,CASE WHEN (i.IntEnabledTherProg LIKE 'SilverCloud%' OR i.IntEnabledTherProg LIKE  'Slvrcld%' ) THEN 'SilverCloud'
+	i.[PathwayID]
+	,CASE 
+		WHEN (i.IntEnabledTherProg LIKE 'SilverCloud%' OR i.IntEnabledTherProg LIKE  'Slvrcld%' ) THEN 'SilverCloud'
 		WHEN (i.IntEnabledTherProg LIKE 'Mnddstrct%' OR i.IntEnabledTherProg LIKE 'Minddistrict%') THEN 'Minddistrict'
 		WHEN i.IntEnabledTherProg LIKE 'iCT%' THEN 'iCT'
 		WHEN i.IntEnabledTherProg LIKE 'OCD%' THEN 'OCD-NET'
 		WHEN i.IntEnabledTherProg IS NULL THEN 'No IET'
 		ELSE i.IntEnabledTherProg
-		END
-	AS IntEnabledTherProg
-	,i.IntegratedSoftwareInd
-	,SUM(DurationIntEnabledTher) AS DurationIntEnabledTher
-	,COUNT(DISTINCT CASE WHEN i.[EndDateIntEnabledTherLog] BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate THEN [UniqueID_IDS205] ELSE NULL END) AS Count_IET
+	END AS [IntEnabledTherProg]
+	,i.[IntegratedSoftwareInd]
+	,SUM(DurationIntEnabledTher) AS [DurationIntEnabledTher]
+	,COUNT(DISTINCT CASE WHEN i.[EndDateIntEnabledTherLog] BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate THEN [UniqueID_IDS205] ELSE NULL END) AS [Count_IET]
+
 INTO [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration_Step1]
+
 FROM [mesh_IAPT].[IDS205internettherlog] i
 INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON i.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND i.[AuditId] = l.[AuditId]
+
 WHERE l.IsLatest = 1 AND DurationIntEnabledTher>0
+
 GROUP BY i.PathwayID
-,CASE WHEN (i.IntEnabledTherProg LIKE 'SilverCloud%' OR i.IntEnabledTherProg LIKE  'Slvrcld%' ) THEN 'SilverCloud'
-		WHEN (i.IntEnabledTherProg LIKE 'Mnddstrct%' OR i.IntEnabledTherProg LIKE 'Minddistrict%') THEN 'Minddistrict'
-		WHEN i.IntEnabledTherProg LIKE 'iCT%' THEN 'iCT'
-		WHEN i.IntEnabledTherProg LIKE 'OCD%' THEN 'OCD-NET'
-		WHEN i.IntEnabledTherProg IS NULL THEN 'No IET'
-		ELSE i.IntEnabledTherProg
+		,CASE 
+			WHEN (i.IntEnabledTherProg LIKE 'SilverCloud%' OR i.IntEnabledTherProg LIKE  'Slvrcld%' ) THEN 'SilverCloud'
+			WHEN (i.IntEnabledTherProg LIKE 'Mnddstrct%' OR i.IntEnabledTherProg LIKE 'Minddistrict%') THEN 'Minddistrict'
+			WHEN i.IntEnabledTherProg LIKE 'iCT%' THEN 'iCT'
+			WHEN i.IntEnabledTherProg LIKE 'OCD%' THEN 'OCD-NET'
+			WHEN i.IntEnabledTherProg IS NULL THEN 'No IET'
+			ELSE i.IntEnabledTherProg
 		END
-,IntegratedSoftwareInd
+		,IntegratedSoftwareInd
 
 --This table sums the duration and count of IET appointments based on PathwayID and IntEnabledTherProg without the integrated software indicator. 
 --We only need info about the number finishing a course of treatment split by integrated software indicator and the rest of the metrics don't need to be split by the integrated software indicator 
 --so the number of IET appts and duration total aren't aggregated based on the integration software indicator
 --The base table below ranks the pathwayIDs so any PathwayIDs with more than one integrated software indicator listed will be reduced to one PathwayID.
+
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_TypeAndDuration]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration]
+
 SELECT
 	a.*
 	,i2.IntegratedSoftwareInd
 INTO [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration]
-FROM(
+FROM (
 	SELECT
 		PathwayID
 		,IntEnabledTherProg
@@ -64,48 +65,53 @@ FROM(
 		PathwayID
 		,IntEnabledTherProg
 ) a
+
 LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration_Step1] i2 ON i2.PathwayID=a.PathwayID AND i2.IntEnabledTherProg=a.IntEnabledTherProg
 
 ----------------------------------------- Any Appointment Type Clinical Time--------------------------------
 --This table calculates the total clinical time per PathwayID for any appointment type (including IET).
 --This is used below to include the any therapist time per treatment in the [MHDInternal].[TEMP_TTAD_IET_Base] 
 --which is used in the averages script to calculate the average any therapist time per treatment.
+
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_NoIETDuration]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_NoIETDuration]
+
 SELECT  
     ca.PathwayID
     ,SUM(ca.ClinContactDurOfCareAct) AS ClinContactDurOfCareAct
+
 INTO [MHDInternal].[TEMP_TTAD_IET_NoIETDuration]
+
 FROM [mesh_IAPT].[IDS202careactivity] ca
-INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON ca.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND ca.[AuditId] = l.[AuditId]
+	 INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON ca.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND ca.[AuditId] = l.[AuditId]
+
 WHERE l.IsLatest = 1 
+
 GROUP BY ca.PathwayID
 
 ------------------------------------------Main Base table-------------------------------------
 --This creates a base table with one record per row which is then aggregated to produce [MHDInternal].[DASHBOARD_TTAD_IET_Main]
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
---For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
 --For monthly refresh @PeriodStart2 should always be set for September 2020 
 --The full period is run due to the average tables (which use this base table) recalculating the averages for each quarter
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2= '2020-09-01'	 
+
+DECLARE @PeriodStart2 DATE = '2020-09-01'	 
 
 SET DATEFIRST 1
 
-PRINT @PeriodStart
-PRINT @PeriodEnd
-
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_Base]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_Base]
+
 SELECT
 	*
 	,ROW_NUMBER() OVER(PARTITION BY PathwayID, Month, IntEnabledTherProg ORDER BY IntegratedSoftwareInd) as PathwayIDRank
 	--Some pathwayIDs have more than one therapy type within a broader therapy type grouping (e.g. Silvercloud) and so have a record of both integrated and non-integrated software. 
 	--The ranking allows only one PathwayID to be counted in the tables which don't use integrated software field
 INTO [MHDInternal].[TEMP_TTAD_IET_Base]
-FROM(
+
+FROM (
+	
 	SELECT DISTINCT
 		CAST(DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS DATE) AS Month
 		,[Fin_Year_Quarter_QQ_YY_YY] AS Quarter
@@ -179,7 +185,7 @@ FROM(
 		
 		--Problem Descriptor
 		,CASE WHEN r.PresentingComplaintHigherCategory = 'Depression' OR r.[PrimaryPresentingComplaint] = 'Depression' THEN 'F32 or F33 - Depression'
-			WHEN r.PresentingComplaintHigherCategory = 'Unspecified' OR r.[PrimaryPresentingComplaint] = 'Unspecified'  THEN 'Unspecified'
+			WHEN r.PresentingComplaintHigherCategory = 'Unspecified' OR r.[PrimaryPresentingComplaint] = 'Unspecified' THEN 'Unspecified'
 			WHEN r.PresentingComplaintHigherCategory = 'Other recorded problems' OR r.[PrimaryPresentingComplaint] = 'Other recorded problems' THEN 'Other recorded problems'
 			WHEN r.PresentingComplaintHigherCategory = 'Other Mental Health problems' OR r.[PrimaryPresentingComplaint] = 'Other Mental Health problems' THEN 'Other Mental Health problems'
 			WHEN r.PresentingComplaintHigherCategory = 'Invalid Data supplied' OR r.[PrimaryPresentingComplaint] = 'Invalid Data supplied' THEN 'Invalid Data supplied'
@@ -231,41 +237,41 @@ FROM(
 		,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS 'ProviderName'
 		,CASE WHEN ph.[Region_Name] IS NOT NULL THEN ph.[Region_Name] ELSE 'Other' END AS 'RegionNameProv'
 		,CASE WHEN ph.[Region_Code] IS NOT NULL THEN ph.[Region_Code] ELSE 'Other' END AS 'RegionCodeProv'
-	FROM [MESH_IAPT].[IDS101referral] r
+	
+FROM	[MESH_IAPT].[IDS101referral] r
+		----------------------------------
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+		----------------------------------
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		----------------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		----------------------------------
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration] i ON i.PathwayID = r.PathwayID
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_NoIETDuration] ca ON ca.PathwayID=r.PathwayID
+		----------------------------------
+		INNER JOIN [Internal_Reference].[Date_Full] ON Full_Date = l.ReportingPeriodStartDate
 
-	INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
-
-	--Four tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes:
-	LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-		AND ch.Effective_To IS NULL
-
-	LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-		AND ph.Effective_To IS NULL
-
-	LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration] i ON i.PathwayID = r.PathwayID
-	LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_NoIETDuration] ca ON ca.PathwayID=r.PathwayID
-
-	INNER JOIN [Internal_Reference].[Date_Full] ON Full_Date = l.ReportingPeriodStartDate
-
-	WHERE r.UsePathway_Flag = 'True' 
-		AND l.IsLatest = 1	--To get the latest data
-		AND r.CompletedTreatment_Flag = 'True'	--Data is filtered to only look at those who have completed a course of treatment
-		AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate	
-		AND r.ReferralRequestReceivedDate BETWEEN @PeriodStart2 AND @PeriodEnd
-		AND l.ReportingPeriodStartDate BETWEEN @PeriodStart2 AND @PeriodStart
+WHERE r.UsePathway_Flag = 'True' 
+	AND l.IsLatest = 1
+	AND r.CompletedTreatment_Flag = 'True'	
+	AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate	
+	AND r.ReferralRequestReceivedDate BETWEEN @PeriodStart2 AND @PeriodEnd
+	AND l.ReportingPeriodStartDate BETWEEN @PeriodStart2 AND @PeriodStart
 )_
-------------------------------------------------------------------------------------	
-----------------------------------------Aggregated Main Table-----------------------
---This table aggregates [MHDInternal].[TEMP_TTAD_IET_Base] table to get the number of PathwayIDs with the recovery flag,
+	
+/* Aggregated Main Table -----------------------------------------------------------------------------------------------
+-- This table aggregates [MHDInternal].[TEMP_TTAD_IET_Base] table to get the number of PathwayIDs with the recovery flag,
 -- not caseness flag, reliable improvement flag, completed treatment flag, and both the recovery and reliable improvement flag.
---This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Appointment Types (1+ IET, 2+ IET and No IET),
---by IET Therapy Types, by number of IET appts, by End Codes, by Problem Descriptors, by severity scores,
+-- This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Appointment Types (1+ IET, 2+ IET and No IET),
+-- by IET Therapy Types, by number of IET appts, by End Codes, by Problem Descriptors, by severity scores,
 -- by pathway type (unique or mixed IET pathway) and Month.
---The full table is re-run each month as base table contains all months
+-- The full table is re-run each month ------------------------------------------------------------------------------- */
+
 IF OBJECT_ID ('[MHDInternal].[DASHBOARD_TTAD_IET_Main]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_IET_Main]
---IET 1+
+
+-- IET 1+ ---------------------------------------------------
 SELECT 
 	Month
 	,[Sub-ICBCode]
@@ -317,7 +323,7 @@ GROUP BY
 	,UniqueMixedPathway
 GO
 
---No IET
+-- No IET --------------------------------------------------
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_IET_Main]
 SELECT 
 	Month
@@ -368,7 +374,7 @@ GROUP BY
 	,[PHQ9 Cluster]
 	,UniqueMixedPathway
 
---IET 2+
+-- IET 2+ -------------------------------------------
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_IET_Main]
 SELECT 
 	Month
@@ -421,10 +427,10 @@ GROUP BY
 
 GO
 
-----------------------------Aggregated IntegSoft Table------------------
---This table is used in the dashboard for the integration engine indicator page
+/* Aggregated IntegSoft Table (used in the dashboard for the integration engine indicator page) --------------------------------  */
 IF OBJECT_ID ('[MHDInternal].[DASHBOARD_TTAD_IET_IntegSoft]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_IET_IntegSoft]
---IET 1+
+
+-- IET 1+ -------------------------------------------------
 SELECT 
 	Month
 	,[Sub-ICBCode]
@@ -486,26 +492,20 @@ FROM(
 	,'747891000000106') --Snomed codes for the PEQ questions of interest
 )_
 
------------------------------------PEQ Base Table------------------------------------------------------------
---This creates a base table with one record per row which is then aggregated to produce [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
+/* PEQ Base Table (creates a base table with one record per row which is then aggregated to produce [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]) ------- */
+
 --For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE  = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
---For monthly refresh the offset should be set to -1
-DECLARE @Offset int
-SET @Offset=-1
+DECLARE @Offset INT = -1 -- for monthly refresh set to -1
 
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2= '2020-09-01'	 --This is for defining the period for referrals
+DECLARE @PeriodStart2 DATE = '2020-09-01'	 --This is for defining the period for referrals
 
 SET DATEFIRST 1
 
-PRINT @PeriodStart
-PRINT @PeriodEnd
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_BasePEQ]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
+
 SELECT DISTINCT 
 	CAST(DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS DATE) as Month
 	,r.PathwayID
@@ -548,9 +548,9 @@ SELECT DISTINCT
 
 	,CASE WHEN (r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate) AND r.CompletedTreatment_Flag = 'True' 
 		AND r.PathwayID IS NOT NULL THEN 1 ELSE 0
-	END AS CompTreatFlag --Flag for completed treatment flag, where the discharge date is within the reporting period
+	END AS CompTreatFlag -- Flag for completed treatment, where the discharge date is within the reporting period
     
-	--Geography
+	-- Geography
 	,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END AS 'Sub-ICBCode'
 	,CASE WHEN ch.[Organisation_Name] IS NOT NULL THEN ch.[Organisation_Name] ELSE 'Other' END AS 'Sub-ICBName'
 	,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END AS 'ICBCode'
@@ -561,21 +561,22 @@ SELECT DISTINCT
 	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS 'ProviderName'
 	,CASE WHEN ph.[Region_Name] IS NOT NULL THEN ph.[Region_Name] ELSE 'Other' END AS 'RegionNameProv'
 	,CASE WHEN ph.[Region_Code] IS NOT NULL THEN ph.[Region_Code] ELSE 'Other' END AS 'RegionCodeProv'
-INTO [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
-FROM [MESH_IAPT].[IDS101referral] r
-INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
 
---Three tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes:
-LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default
-	AND ch.Effective_To IS NULL
-LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-	AND ph.Effective_To IS NULL
---For IET Therapy Type:
-LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration] i ON i.PathwayID = r.PathwayID
---PEQ Questions and latest answer:
-LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_PEQRank] p ON p.PathwayID=r.PathwayID AND p.LatestAnswer=1
+INTO [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
+
+FROM	[MESH_IAPT].[IDS101referral] r
+		--------------------------------
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+		--------------------------------
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		--------------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		--For IET Therapy Type:
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_TypeAndDuration] i ON i.PathwayID = r.PathwayID
+		--PEQ Questions and latest answer:
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_PEQRank] p ON p.PathwayID=r.PathwayID AND p.LatestAnswer = 1
 
 WHERE l.IsLatest = 1	--To get the latest data
 	AND UsePathway_Flag='True'
@@ -584,15 +585,14 @@ WHERE l.IsLatest = 1	--To get the latest data
 	AND r.ReferralRequestReceivedDate BETWEEN @PeriodStart2 AND @PeriodEnd
 	AND l.ReportingPeriodStartDate BETWEEN DATEADD(MONTH, @Offset, @PeriodStart) AND @PeriodStart
 	
-----------------------------------------Aggregated PEQ Table------------------------
---This table aggregates [MHDInternal].[TEMP_TTAD_IET_BasePEQ] table to get the number of PathwayIDs with the completed treatment flag.
---This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Appointment Types 
---(1+ IET, 2+ IET and No IET), by IET Therapy Types, by PEQ Questions and Answers, and by Month.
---Only the latest refreshed month is added each month
+/* Aggregated PEQ Table---------------------------------------------------------------------------------------------------------------
+-- This table aggregates [MHDInternal].[TEMP_TTAD_IET_BasePEQ] table to get the number of PathwayIDs with the completed treatment flag.
+-- This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Appointment Types 
+-- (1+ IET, 2+ IET and No IET), by IET Therapy Types, by PEQ Questions and Answers, and by Month.
+-- Only the latest refreshed month is added each month ------------------------------------------ */
 
---IF OBJECT_ID ('[MHDInternal].[DASHBOARD_TTAD_IET_PEQ]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
---IET 1+
+-- IET 1+ ------------------------------------------------
 SELECT
 	Month
 	,[Sub-ICBCode]
@@ -611,9 +611,11 @@ SELECT
 	,Question
 	,Answer
 	,SUM(CompTreatFlag) AS CompTreatFlag
---INTO [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
+
 FROM [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
+
 WHERE InternetEnabledTherapy_Count>=1
+
 GROUP BY 
 	Month
 	,[Sub-ICBCode]
@@ -631,8 +633,10 @@ GROUP BY
 	,Question
 	,Answer
 GO
+
 --No IET
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
+
 SELECT 
 	Month
 	,[Sub-ICBCode]
@@ -651,8 +655,11 @@ SELECT
 	,Question
 	,Answer
 	,SUM(CompTreatFlag) AS CompTreatFlag
+
 FROM [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
+
 WHERE InternetEnabledTherapy_Count=0 OR InternetEnabledTherapy_Count IS NULL
+
 GROUP BY 
 	Month
 	,[Sub-ICBCode]
@@ -670,8 +677,9 @@ GROUP BY
 	,Question
 	,Answer
 
---IET 2+
+-- IET 2+ -------------------------------------------------
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_IET_PEQ]
+
 SELECT 
 	Month
 	,[Sub-ICBCode]
@@ -690,8 +698,11 @@ SELECT
 	,Question
 	,Answer
 	,SUM(CompTreatFlag) AS CompTreatFlag
+
 FROM [MHDInternal].[TEMP_TTAD_IET_BasePEQ]
+
 WHERE InternetEnabledTherapy_Count>=2
+
 GROUP BY 
 	Month
 	,[Sub-ICBCode]
@@ -711,13 +722,13 @@ GROUP BY
 
 GO
 
----------------------------------------------------------
----Number of Appointments and Recording of Therapist Time
 
---------------------------Ranking IET Contacts Table-------------------------------------------------
---This table lists each IET contact for each PathwayID and also ranks them so the latest contact is labelled as 1.
---It is used to produce [MHDInternal].[TEMP_TTAD_IET_AvgIETContactBase] in the averages script and [MHDInternal].[TEMP_TTAD_IET_BaseAppts]
+/* -- Number of Appointments and Recording of Therapist Time ---------------------------------------------------------
+-- This table lists each IET contact for each PathwayID and also ranks them so the latest contact is labelled as 1.
+-- It is used to produce [MHDInternal].[TEMP_TTAD_IET_AvgIETContactBase] in the averages script and [MHDInternal].[TEMP_TTAD_IET_BaseAppts] ----- */
+
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_IETContacts]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_IETContacts]
+
 SELECT
 *
 ,ROW_NUMBER() OVER(PARTITION BY PathwayID ORDER BY StartDateIntEnabledTherLog desc) as LatestContactRank
@@ -741,27 +752,24 @@ FROM(
 	INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON i.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND i.[AuditId] = l.[AuditId]
 	WHERE l.IsLatest = 1 AND i.DurationIntEnabledTher>0
 )_
+
 ------------------------------------------Appts Base table-------------------------------------
 --This creates a base table with one record per row which is then aggregated to produce [MHDInternal].[DASHBOARD_TTAD_IET_IETTherapistTimeRecord]
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE
---For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT EOMONTH(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
 --For monthly refresh @PeriodStart2 should always be set for September 2020 
 --The full period is run due to the average tables (which use this base table) recalculating the averages for each quarter
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2= '2020-09-01'	 	 
+
+DECLARE @PeriodStart2 DATE = '2020-09-01'	 	 
 
 SET DATEFIRST 1
 
-PRINT @PeriodStart
-PRINT @PeriodEnd
-
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_IET_BaseAppts]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_IET_BaseAppts]
+
 SELECT DISTINCT
-	CAST(DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS DATE) AS Month
+	CAST(DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS DATE) AS [Month]
 	,r.PathwayID
 	,r.Unique_MonthID
 
@@ -789,34 +797,35 @@ SELECT DISTINCT
 	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS 'ProviderName'
 	,CASE WHEN ph.[Region_Name] IS NOT NULL THEN ph.[Region_Name] ELSE 'Other' END AS 'RegionNameProv'
 	,CASE WHEN ph.[Region_Code] IS NOT NULL THEN ph.[Region_Code] ELSE 'Other' END AS 'RegionCodeProv'
+
 INTO [MHDInternal].[TEMP_TTAD_IET_BaseAppts]
-FROM [MESH_IAPT].[IDS101referral] r
 
-INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+FROM	[MESH_IAPT].[IDS101referral] r
+		--------------------------------
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+		--------------------------------
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default  AND ch.Effective_To IS NULL
+		--------------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		--------------------------------
+		LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_IETContacts] ic ON ic.PathwayID = r.PathwayID and ic.Unique_MonthID=r.Unique_MonthID
 
---Four tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes:
-LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-	AND ch.Effective_To IS NULL
-
-LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-	AND ph.Effective_To IS NULL
-
-LEFT JOIN [MHDInternal].[TEMP_TTAD_IET_IETContacts] ic ON ic.PathwayID = r.PathwayID and ic.Unique_MonthID=r.Unique_MonthID
-WHERE r.UsePathway_Flag = 'True' 
-	AND l.IsLatest = 1	--To get the latest data
-	AND ic.EndDateIntEnabledTherLog BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate
-	AND l.ReportingPeriodStartDate BETWEEN @PeriodStart2 AND @PeriodStart
+WHERE	r.UsePathway_Flag = 'True' 
+		AND l.IsLatest = 1	
+		AND ic.EndDateIntEnabledTherLog BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate
+		AND l.ReportingPeriodStartDate BETWEEN @PeriodStart2 AND @PeriodStart
 	
-------------------------------------Aggregate IET Therapist Time Record
---This table aggregates [MHDInternal].[TEMP_TTAD_IET_AvgIETContactBase] table to get the number of PathwayIDs with the completed treatment flag 
---and have an IET therapy type.
---This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Therapist Time Recorded, 
---by IET Therapy Types and Month.
---The full table is re-run each month as base table contains all months
+/* Aggregate IET Therapist Time Record ----------------------------------------------------------------------------------------------------------------------------------------
+-- This table aggregates [MHDInternal].[TEMP_TTAD_IET_AvgIETContactBase] table to get the number of PathwayIDs with the completed treatment flag and have an IET therapy type.
+-- This is calculated at different Geography levels (National, Regional, ICB, Sub-ICB and Provider), by Therapist Time Recorded, by IET Therapy Types and Month.
+-- The full table is re-run each month as base table contains all months --- */
+
 IF OBJECT_ID ('[MHDInternal].[DASHBOARD_TTAD_IET_IETTherapistTimeRecord]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_IET_IETTherapistTimeRecord]
---National
+
+-- National -----------------------------------
+
 SELECT
 	Month
 	,RegionNameComm
@@ -832,9 +841,13 @@ SELECT
 	,TherapistTimeRecorded
 	,IntEnabledTherProg
 	,COUNT(StartDateIntEnabledTherLog) AS NumberofAppointments
+
 INTO [MHDInternal].[DASHBOARD_TTAD_IET_IETTherapistTimeRecord]
+
 FROM [MHDInternal].[TEMP_TTAD_IET_BaseAppts]
+
 WHERE IntEnabledTherProg<>'No IET'
+
 GROUP BY
 	Month
 	,RegionNameComm
