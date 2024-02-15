@@ -1,3 +1,7 @@
+/* Update script for:
+-- [MHDInternal].[DASHBOARD_TTAD_ProtChar_MainTable]
+-- [MHDInternal].[DASHBOARD_TTAD_ProtChar_Averages]
+-- [MHDInternal].[DASHBOARD_TTAD_ProtChar_PEQs] ------ */
 
 -- DELETE MAX(Month) -----------------------------------------------------------------------
  
