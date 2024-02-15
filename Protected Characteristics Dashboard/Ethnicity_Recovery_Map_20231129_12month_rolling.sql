@@ -1,13 +1,9 @@
-/*
-Ethnicity - recovery summary.  **PROVIDER DATA ONLY**
-Prepared by Becky Musgrove, 06  2021
-Adapted by Alex Macdonald, 11 2023
-Adapted by Sarah Blincko 12 2023
-*/
 
--- Postcode Ranking -----------------------------
---Trust sites have more than one postcode so these are ranked by effective from date and then alphabetically so only one postcode is used
+/* Postcode Ranking -------------------------------------------------------------------------------------------------------------------------
+-- Trust sites have more than one postcode so these are ranked by 'effective from' date, then alphabetically, so only one postcode is used -- */
+
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_ProtChar_Postcodes]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_Postcodes]
+
 SELECT	
     [Code] AS SiteCode
 	,[Name]
@@ -15,12 +11,14 @@ SELECT
     ,[Latitude_1m] AS Latitude
     ,[Longitude_1m] AS Longitude
     ,ROW_NUMBER() OVER(PARTITION BY Code ORDER BY [Effective_From] DESC,[Postcode_single_space_e_Gif] ASC) AS PostcodeRank
+
 INTO [MHDInternal].[TEMP_TTAD_ProtChar_Postcodes]
+
 FROM [UKHD_ODS].[Postcode_Grid_Refs_Eng_Wal_Sco_And_NI_SCD] a
 	INNER JOIN [UKHD_ODS].[All_Codes] b ON a.[Postcode_single_space_e_Gif] = b.Postcode AND Is_Latest = 1 AND Effective_To IS NULL
 
----------------------------------------------------------------------------------------------------------------------------------
-/* Setting parameters for rolling 12 months */
+
+/* -- Setting parameters for rolling 12 months ------------------------------------------------------------------------------------- */
 
 DECLARE @Offset AS INT = 0
 
@@ -30,15 +28,17 @@ DECLARE @PeriodStart DATE = (SELECT DATEADD(DAY,1, EOMONTH(DATEADD(MONTH,-12,@Pe
 PRINT @PeriodEnd
 PRINT @PeriodStart
 
---Base Table
+-- Base Table ----------------------------------------------------------------------------------------------------------------------------------
+
 IF OBJECT_ID('[MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapBase]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapBase]
+
 SELECT DISTINCT
-	@PeriodStart AS PeriodStart
-	,@PeriodEnd AS PeriodEnd
-	,r.PathwayID
-	,CASE WHEN ph.[Organisation_Code] IS NOT NULL THEN ph.[Organisation_Code] ELSE 'Other' END AS ProviderCode
-	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS ProviderName
-	,CASE WHEN ph.Region_Name IS NOT NULL THEN ph.Region_Name ELSE 'Other' END AS Region
+	@PeriodStart AS [PeriodStart]
+	,@PeriodEnd AS [PeriodEnd]
+	,r.[PathwayID]
+	,CASE WHEN ph.[Organisation_Code] IS NOT NULL THEN ph.[Organisation_Code] ELSE 'Other' END AS [ProviderCode]
+	,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END AS [ProviderName]
+	,CASE WHEN ph.Region_Name IS NOT NULL THEN ph.Region_Name ELSE 'Other' END AS [Region]
 
     ,pc.[Postcode] AS 'Postcode'
     ,pc.[Latitude] AS 'Lat'
@@ -83,22 +83,22 @@ SELECT DISTINCT
 	AS 'Ethnicity - Detailed'
 
 	,CASE WHEN r.ReferralRequestReceivedDate BETWEEN @PeriodStart AND @PeriodEnd AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS Referrals
+	AS [Referrals]
 
 	,CASE WHEN r.TherapySession_FirstDate BETWEEN @PeriodStart AND @PeriodEnd AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS Access
+	AS [Access]
 
 	,CASE WHEN r.ServDischDate BETWEEN @PeriodStart AND @PeriodEnd AND r.CompletedTreatment_Flag='True' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS FinishedTreatment
+	AS [FinishedTreatment]
 
 	,CASE WHEN r.ServDischDate BETWEEN @PeriodStart AND @PeriodEnd AND r.CompletedTreatment_Flag='True' AND r.Recovery_Flag='True' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS Recovery
+	AS [Recovery]
 
 	,CASE WHEN r.ServDischDate BETWEEN @PeriodStart AND @PeriodEnd AND r.CompletedTreatment_Flag='True' AND r.ReliableImprovement_Flag='True' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS ReliableImprovement
+	AS [ReliableImprovement]
 
 	,CASE WHEN r.ServDischDate BETWEEN @PeriodStart AND @PeriodEnd AND r.CompletedTreatment_Flag='True' AND r.NotCaseness_Flag='True' AND r.PathwayID IS NOT NULL THEN 1 ELSE 0 END
-	AS NotCaseness
+	AS [NotCaseness]
 
 INTO [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapBase]
 FROM	[mesh_IAPT].[IDS101referral] r
@@ -107,17 +107,19 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
 		-----------------------------------------------
 		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_ProtChar_Postcodes] pc ON r.OrgID_Provider = pc.[SiteCode] AND PostcodeRank=1
 
 WHERE	r.UsePathway_Flag = 'TRUE' AND l.IsLatest = 1
 GO
 
---------------------------------------
---Aggregate Table
---This has columns set to NULL which are updated with values later in the query
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Aggregate Table (some columns are set to NULL which are updated with values later in the query) ------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]
+
 --Ethnicity - Broad
 SELECT
 	[PeriodStart]
@@ -128,20 +130,18 @@ SELECT
 	,[Postcode]
 	,[Lat]
 	,[Long]
-	,CAST('Ethnicity - Broad' AS VARCHAR(100)) AS Category
-	,CAST([Ethnicity - Broad] AS VARCHAR(255)) AS Ethnicity
+	,CAST('Ethnicity - Broad' AS VARCHAR(100)) AS [Category]
+	,CAST([Ethnicity - Broad] AS VARCHAR(255)) AS [Ethnicity]
 
 --Organisation, Category and Ethnicity Level
-	,SUM([Referrals]) AS Referrals
-	,SUM([Access]) AS Access
-	,SUM([FinishedTreatment]) AS FinishedTreatment
-	,SUM([Recovery]) AS Recovery
-	,SUM([ReliableImprovement]) AS ReliableImprovement
-	,SUM([NotCaseness]) AS NotCaseness
-	,CASE WHEN SUM([Recovery])>0 AND (SUM([FinishedTreatment])-SUM([NotCaseness]))>0 THEN CAST(CAST(SUM([Recovery]) AS FLOAT)/(SUM([FinishedTreatment])-SUM([NotCaseness])) AS DECIMAL(10,2)) ELSE NULL END
-	AS 'Recovery rate' 
-	,CASE WHEN SUM([ReliableImprovement])>0 AND SUM([FinishedTreatment])>0 THEN CAST(CAST(SUM([ReliableImprovement]) AS FLOAT)/(SUM([FinishedTreatment])) AS DECIMAL(10,2)) ELSE NULL END
-	AS 'Reliable rate'
+	,SUM([Referrals]) AS [Referrals]
+	,SUM([Access]) AS [Access]
+	,SUM([FinishedTreatment]) AS [FinishedTreatment]
+	,SUM([Recovery]) AS [Recovery]
+	,SUM([ReliableImprovement]) AS [ReliableImprovement]
+	,SUM([NotCaseness]) AS [NotCaseness]
+	,CASE WHEN SUM([Recovery])>0 AND (SUM([FinishedTreatment])-SUM([NotCaseness]))>0 THEN CAST(CAST(SUM([Recovery]) AS FLOAT)/(SUM([FinishedTreatment])-SUM([NotCaseness])) AS DECIMAL(10,2)) ELSE NULL END AS [Recovery rate]
+	,CASE WHEN SUM([ReliableImprovement])>0 AND SUM([FinishedTreatment])>0 THEN CAST(CAST(SUM([ReliableImprovement]) AS FLOAT)/(SUM([FinishedTreatment])) AS DECIMAL(10,2)) ELSE NULL END AS [Reliable rate]
 
 --Organisation and Category Level
 	,CAST(NULL AS DECIMAL(10,2)) AS 'Referral proportion'
@@ -167,8 +167,11 @@ SELECT
 
 	,CAST(NULL AS DECIMAL(10,2)) AS 'Recover diff'
 	,CAST(NULL AS DECIMAL(10,2)) AS 'Reliable diff'
+
 INTO [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]
+
 FROM [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapBase]
+
 GROUP BY 	
 	[PeriodStart]
 	,[PeriodEnd]
@@ -183,6 +186,7 @@ GO
 
 --Ethnicity - High-Level
 INSERT INTO [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]
+
 SELECT
 	[PeriodStart]
 	,[PeriodEnd]
@@ -192,7 +196,7 @@ SELECT
 	,[Postcode]
 	,[Lat]
 	,[Long]
-	,'Ethnicity - High-Level' AS Category
+	,'Ethnicity - High-Level' AS [Category]
 	,[Ethnicity - High-Level] AS Ethnicity
 
 --Organisation, Category and Ethnicity Level
@@ -233,6 +237,7 @@ SELECT
 	,CAST(NULL AS DECIMAL(10,2)) AS 'Reliable diff'
 
 FROM [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapBase]
+
 GROUP BY 	
 	[PeriodStart]
 	,[PeriodEnd]
@@ -246,6 +251,7 @@ GROUP BY
 
 --Ethnicity - Detailed
 INSERT INTO [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]
+
 SELECT
 	[PeriodStart]
 	,[PeriodEnd]
@@ -385,6 +391,7 @@ WHERE b.Ethnicity ='Not known/Not stated/Unspecified/Invalid data supplied'
 
 --White British Recovery and Reliable Rates
 IF OBJECT_ID('[MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate_RecRel]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate_RecRel]
+
 SELECT DISTINCT
 	ProviderCode
 	,Category
@@ -408,9 +415,11 @@ FROM [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate] a
 LEFT JOIN [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate_RecRel] b ON a.[ProviderCode]= b.[ProviderCode]
 
 
--- Rounding of variables ---------------------------------------------------------------
---This is the final table used in the dashboard. The table is re-run each month so it only contains the data for latest 12 months
+/* -- Rounding of variables ------------------------------------------------------------------------------------------------------
+-- Final table used in the dashboard - re-run each month so it contains the data for latest 12 months ---------------------------- */
+
 IF OBJECT_ID('[MHDInternal].[DASHBOARD_TTAD_ProtChar_Ethnicity_Map_Rounded]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_ProtChar_Ethnicity_Map_Rounded]
+
 SELECT	
 	[PeriodStart]
 	,[PeriodEnd]
@@ -423,42 +432,33 @@ SELECT
 	,[Category]
 	,[Ethnicity]
 
-	,CASE WHEN Referrals < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND((Referrals+2) /5,0)*5 AS INT) AS VARCHAR), '*') END
-	AS [Referrals]
-	,CASE WHEN Access < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND((Access+2) /5,0)*5 AS INT) AS VARCHAR), '*') END
-	AS [Access]
-	,CASE WHEN [FinishedTreatment] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([FinishedTreatment]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END
-	AS [Finished Treatment]
+	,CASE WHEN Referrals < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND((Referrals+2) /5,0)*5 AS INT) AS VARCHAR), '*') END AS [Referrals]
+	,CASE WHEN Access < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND((Access+2) /5,0)*5 AS INT) AS VARCHAR), '*') END AS [Access]
+	,CASE WHEN [FinishedTreatment] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([FinishedTreatment]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END AS [Finished Treatment]
+	,CASE WHEN [Recovery]<5 OR (FinishedTreatment-NotCaseness) < 5 THEN NULL ELSE [Recovery rate] END AS [Recovery rate]
+	,CASE WHEN [ReliableImprovement]<5 OR FinishedTreatment < 5 THEN NULL ELSE [Reliable rate] END AS [Reliable rate]
 
-	,CASE WHEN [Recovery]<5 OR (FinishedTreatment-NotCaseness) < 5 THEN NULL ELSE [Recovery rate] END
-	AS [Recovery rate]
-	,CASE WHEN [ReliableImprovement]<5 OR FinishedTreatment < 5 THEN NULL ELSE [Reliable rate] END
-	AS [Reliable rate]
+	,[Referral proportion] -- already has suppression rules applied
+	,[Access proportion] -- already has suppression rules applied
 
-	,[Referral proportion] --Already had suppression rules applied
-	,[Access proportion] --Already had suppression rules applied
+	,CASE WHEN [Org Recovery]<5 OR ([Org FinishedTreatment]-[Org NotCaseness]) < 5 THEN NULL ELSE [Org Recovery rate] END AS [Org Recovery rate]
+	,CASE WHEN [Org Reliable]<5 OR [Org FinishedTreatment] < 5 THEN NULL ELSE [Org Reliable rate] END AS [Org Reliable rate]
+	,CASE WHEN [Org Referrals] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([Org Referrals]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END AS [Org Referrals]
+	,CASE WHEN [Org Access] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([Org Access]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END AS [Org Access]
 
-	,CASE WHEN [Org Recovery]<5 OR ([Org FinishedTreatment]-[Org NotCaseness]) < 5 THEN NULL ELSE [Org Recovery rate] END
-	AS 'Org Recovery rate'
-	,CASE WHEN [Org Reliable]<5 OR [Org FinishedTreatment] < 5 THEN NULL ELSE [Org Reliable rate] END
-	AS 'Org Reliable rate'
-	,CASE WHEN [Org Referrals] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([Org Referrals]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END
-	AS 'Org Referrals'
-	,CASE WHEN [Org Access] < 5 THEN '*' ELSE ISNULL(CAST(CAST(ROUND(([Org Access]+2) /5,0)*5 AS INT) AS VARCHAR), '*') END
-	AS 'Org Access'
+	,[Proportion referrals no ethnicity] -- already has suppression rules applied
+	,[Proportion access no ethnicity] -- already has suppression rules applied
 
-	,[Proportion referrals no ethnicity] --Already had suppression rules applied
-	,[Proportion access no ethnicity] --Already had suppression rules applied
+	,[WhiteBRecoveryRate] -- already has suppression rules applied
+	,[WhiteBReliableRate] -- already has suppression rules applied
 
-	,WhiteBRecoveryRate --Already had suppression rules applied
-	,WhiteBReliableRate --Already had suppression rules applied
-
-	,CASE WHEN [Recovery]<5 OR (FinishedTreatment-NotCaseness) < 5 THEN NULL ELSE [Recovery rate]-[WhiteBRecoveryRate] END	--Suppression applies to Recovery rate since WhiteBRecoveryRate already has suppression rules applied
-	AS [Recover diff]
-    ,CASE WHEN [ReliableImprovement]<5 OR FinishedTreatment < 5 THEN NULL ELSE [Reliable rate]-[WhiteBReliableRate] END	--Suppression applies to Reliable rate since WhiteBReliableRate already has suppression rules applied
-	AS [Reliable diff]
+	-- suppression applies to Recovery rate since WhiteBRecoveryRate already has suppression rules applied
+	,CASE WHEN [Recovery]<5 OR (FinishedTreatment-NotCaseness) < 5 THEN NULL ELSE [Recovery rate]-[WhiteBRecoveryRate] END AS [Recover diff]
+    -- suppression applies to Reliable rate since WhiteBReliableRate already has suppression rules applied
+	,CASE WHEN [ReliableImprovement]<5 OR FinishedTreatment < 5 THEN NULL ELSE [Reliable rate]-[WhiteBReliableRate] END	AS [Reliable diff]
 
 INTO [MHDInternal].[DASHBOARD_TTAD_ProtChar_Ethnicity_Map_Rounded]
+
 FROM [MHDInternal].[TEMP_TTAD_ProtChar_EthnicityMapAggregate]
 
 --Drop Temporary Tables:
