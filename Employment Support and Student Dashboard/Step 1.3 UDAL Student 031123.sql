@@ -3,7 +3,6 @@
 
 -- DELETE MAX(Month) -----------------------------------------------------------------------
 --Delete the latest month from the following table so that the refreshed version of that month can be added.
---Only one table in this script requires this.
 
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student]
 WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student])
@@ -33,9 +32,9 @@ INTO [MHDInternal].[TEMP_TTAD_EmpSupp_EmployStatusRank]
 FROM [mesh_IAPT].[IDS004empstatus]
 GO
 
----------------------------------------------------------
---Base Table
---This produces a table with one PathwayID per month per row
+----------------------------------------------------------------------
+-- Base Table (produces a table with one PathwayID per month per row)
+
 DECLARE @Offset INT = 0
 
 DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
@@ -93,6 +92,7 @@ SELECT DISTINCT
     AS 'Reliable Improvement'
 
 INTO [MHDInternal].[TEMP_TTAD_EmpSupp_StudentBase]
+
 FROM    [mesh_IAPT].[IDS101referral] r
 		------------------------------
 		INNER JOIN [mesh_IAPT].[IDS001mpi] mpi ON r.[recordnumber] = mpi.[recordnumber]
@@ -101,12 +101,11 @@ FROM    [mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_EmpSupp_EmployStatusRank] e ON r.[RecordNumber] = e.[RecordNumber]  AND e.AuditId = l.AuditId and EmployStatusRank=1
 		------------------------------
         LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-			AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
         LEFT JOIN [MHDInternal].[TEMP_TTAD_EmpSupp_Postcodes] pc ON ph.[Organisation_Code]= pc.[SiteCode] AND PostcodeRank=1
 WHERE 
-    l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart ---for monthly refresh the offset should be -1 as we want the data for the latest 2 months month (i.e. to refresh the previous month's primary data)
+    l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart -- set to -1 for monthly refresh
     AND r.UsePathway_Flag = 'True' 
     AND l.IsLatest = 1
 
@@ -114,8 +113,8 @@ WHERE
 --This table aggregates the base table ([MHDInternal].[TEMP_TTAD_EmpSupp_StudentBase]) and is used in the dashboard.
 --The number of referrals, number entering treatment and clinical outcomes for students and totals are summed for each provider code and post code
 
---IF OBJECT_ID('[MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student]') IS NOT NULL DROP TABLE [MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student]
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student]
+
 SELECT	
     Month
     ,'Refresh' AS 'DataSource'
@@ -146,7 +145,7 @@ SELECT
     ,SUM(NotCasenessStudent) AS 'NotCasenessStudent'
     ,SUM([Reliable Improvement STUDENT]) AS 'Reliable Improvement STUDENT'
     ,SUM([Reliable Improvement]) AS 'Reliable Improvement'
---INTO [MHDInternal].[DASHBOARD_TTAD_EmpSupp_Student]
+
 FROM [MHDInternal].[TEMP_TTAD_EmpSupp_StudentBase]
 
 GROUP BY
