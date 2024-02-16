@@ -13,16 +13,16 @@ DELETE FROM [MHDInternal].[DASHBOARD_TTAD_PDT_IETAcuteReferrals] WHERE [Month] =
 
 ----------------------------------------------------------------------------------------------------------------------------
 
-DECLARE @@Offset INT = 0
+DECLARE @Offset INT = 0
 
-DECLARE @Period_Start DATE = (SELECT DATEADD(MONTH,@@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-DECLARE @Period_End DATE = (SELECT eomonth(DATEADD(MONTH,@@Offset,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @Period_Start DATE = (SELECT DATEADD(MONTH,@Offset,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @Period_End DATE = (SELECT eomonth(DATEADD(MONTH,@Offset,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
 PRINT @Period_Start
 PRINT @Period_End
 
-DECLARE  @Period_Start2 DATE = (SELECT DATEADD(MONTH,(@@Offset +1),MAX(@Period_Start)) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-DECLARE  @Period_End2 DATE = (SELECT eomonth(DATEADD(MONTH,(@@Offset +1),MAX(@Period_End))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE  @Period_Start2 DATE = (SELECT DATEADD(MONTH,(@Offset +1),MAX(@Period_Start)) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE  @Period_End2 DATE = (SELECT eomonth(DATEADD(MONTH,(@Offset +1),MAX(@Period_End))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
 PRINT @Period_Start2
 PRINT @Period_End2
@@ -86,14 +86,14 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
 
 FROM	[mesh_IAPT].[IDS101referral] r
-		---------------------------	
+		----------------------------	
 		INNER JOIN [mesh_IAPT].[IDS001mpi] mpi ON r.recordnumber = mpi.recordnumber
 		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.AuditId = l.AuditId
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
-		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		----------------------------
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
@@ -155,8 +155,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
@@ -215,8 +215,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
@@ -286,8 +286,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
@@ -354,8 +354,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 		---------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
@@ -408,8 +408,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		---------------------------
 		INNER JOIN [MHDInternal].[PreProc_Referral] ppr ON mpi.[Pseudo_NHS_Number_NCDR] = ppr.[Der_Pseudo_NHS_Number] AND ppr.ReferralRequestReceivedDate >= r.ServDischDate
 		---------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
@@ -488,8 +488,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
@@ -522,8 +522,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
@@ -557,8 +557,8 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
