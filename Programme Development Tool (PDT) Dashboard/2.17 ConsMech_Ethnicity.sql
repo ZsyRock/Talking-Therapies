@@ -2,11 +2,8 @@
 -- Refresh updates for [MHDInternal].[DASHBOARD_TTAD_ConsMech_Ethnicity] -----------------------------
 
 -- DELETE MAX(Month) -----------------------------------------------------------------
- 
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_ConsMech_Ethnicity]
- 
 WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_ConsMech_Ethnicity])
-
 --------------------------------------------------------------------------------------
 
 DECLARE @Offset AS INT = 0
@@ -110,14 +107,11 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		--------------------------
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId
 		---------------------------
-		--Four tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes:
 		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-			AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
 
 		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-			AND ph.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 		
 WHERE	r.UsePathway_Flag = 'True' AND l.IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart
@@ -172,8 +166,6 @@ GROUP BY
 	,[Attendence Type]
 
 --Drop Temporary Table -------------------------------
-
 DROP TABLE [MHDInternal].[TEMP_TTAD_PDT_ConsMechBase]
-
 ---------------------------------------------------------------------
 PRINT 'Updated - [MHDInternal].[DASHBOARD_TTAD_ConsMech_Ethnicity]'
