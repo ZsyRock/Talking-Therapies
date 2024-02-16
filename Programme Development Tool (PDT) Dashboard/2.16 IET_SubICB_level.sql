@@ -37,8 +37,8 @@ SELECT DISTINCT
 
 		MAX(c.AUDITID) AS AuditID
 		,[PathwayID]
-		,COUNT (distinct(case when c.ConsMechanism IN ('01', '1', '1 ', ' 1') OR c.ConsMediumUsed IN ('01', '1', '1 ', ' 1') then c.Unique_CareContactID END )) as 'Face to face communication'
-		,COUNT (distinct(case when c.ConsMechanism IN ('02', '2', '2 ', ' 2','03', '3', '3 ', ' 3','04', '4', '4 ', ' 4','05', '5', '5 ', ' 5','06', '6', '6 ', ' 6','98', '98 ', ' 98','08', '8', '8 ', ' 8','09', '9', '9 ', ' 9','10', '10', '10 ', ' 10','11', '11', '11 ', ' 11','12', '12', '12 ', ' 12','13', '13', '13 ', ' 13') OR c.ConsMediumUsed IN ('02', '2', '2 ', ' 2','03', '3', '3 ', ' 3','04', '4', '4 ', ' 4','05', '5', '5 ', ' 5','06', '6', '6 ', ' 6','98', '98 ', ' 98','08', '8', '8 ', ' 8','09', '9', '9 ', ' 9','10', '10', '10 ', ' 10','11', '11', '11 ', ' 11','12', '12', '12 ', ' 12','13', '13', '13 ', ' 13') then c.Unique_CareContactID END )) as 'Other'
+		,COUNT (DISTINCT(CASE WHEN c.ConsMechanism IN ('01', '1', '1 ', ' 1') OR c.ConsMediumUsed IN ('01', '1', '1 ', ' 1') THEN c.Unique_CareContactID END )) AS 'Face to face communication'
+		,COUNT (DISTINCT(CASE WHEN c.ConsMechanism IN ('02', '2', '2 ', ' 2','03', '3', '3 ', ' 3','04', '4', '4 ', ' 4','05', '5', '5 ', ' 5','06', '6', '6 ', ' 6','98', '98 ', ' 98','08', '8', '8 ', ' 8','09', '9', '9 ', ' 9','10', '10', '10 ', ' 10','11', '11', '11 ', ' 11','12', '12', '12 ', ' 12','13', '13', '13 ', ' 13') OR c.ConsMediumUsed IN ('02', '2', '2 ', ' 2','03', '3', '3 ', ' 3','04', '4', '4 ', ' 4','05', '5', '5 ', ' 5','06', '6', '6 ', ' 6','98', '98 ', ' 98','08', '8', '8 ', ' 8','09', '9', '9 ', ' 9','10', '10', '10 ', ' 10','11', '11', '11 ', ' 11','12', '12', '12 ', ' 12','13', '13', '13 ', ' 13') THEN c.Unique_CareContactID END )) AS 'Other'
 
 INTO [MHDInternal].[TEMP_TTAD_PDT_CareContactBase]
 
@@ -58,7 +58,7 @@ SELECT * FROM
 
 (
 
-SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -77,10 +77,10 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 			WHEN Validated_EthnicCategory IN ('99', 'Z', '-1','-3') THEN 'Not known/Not stated/Unspecified/Invalid data supplied'
 			ELSE 'Other' END AS 'Variable'
 		,'Refresh' AS DataSource
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL) then 'Non-F2F' END as 'F2F status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL) THEN 'Non-F2F' END AS 'F2F status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -92,14 +92,17 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		----------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -115,14 +118,14 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 			WHEN Validated_EthnicCategory IN ('R','S') THEN  'Other Ethnic Groups'
 			WHEN Validated_EthnicCategory IN ('99', 'Z', '-1','-3') THEN 'Not known/Not stated/Unspecified/Invalid data supplied'
 			ELSE 'Other' END
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END
 
 UNION -----------------------------------------------------------------
 
-SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -140,10 +143,10 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 			ELSE 'Unknown'
 			END AS 'Variable'
 		,'Refresh' AS 'DataSource'
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END as 'F2F status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END AS 'F2F status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -155,13 +158,16 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -176,14 +182,14 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 			WHEN Age_ReferralRequest_ReceivedDate >= 65 THEN '65+'
 			ELSE 'Unknown'
 			END
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END
 
 UNION -----------------------------------------------------------------
 
-SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS 'Month'
+SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS 'Month'
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -200,10 +206,10 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 			WHEN Gender NOT IN ('1','01','2','02','9','09') OR Gender IS NULL THEN 'Unspecified' 
 			END AS 'Variable'
 		,'Refresh' AS 'DataSource'
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END as 'F2F status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END AS 'F2F status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -215,13 +221,16 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -234,14 +243,14 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 			WHEN Gender IN ('2','02') THEN 'Female'
 			WHEN Gender IN ('9','09') THEN 'Indeterminate'
 			WHEN Gender NOT IN ('1','01','2','02','9','09') OR Gender IS NULL THEN 'Unspecified' END
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END
 
 UNION ----------------------------------------------------------------- 
 
-SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -271,10 +280,10 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 			WHEN PrimaryPresentingComplaint = 'Anxiety and stress related disorders (Total)' AND SecondaryPresentingComplaint IS NULL THEN 'No Code' 
 			ELSE 'Other' END AS 'Variable'
 		,'Refresh' AS DataSource
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END as 'F2F status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END AS 'F2F status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -286,13 +295,16 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -319,14 +331,14 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 			WHEN PrimaryPresentingComplaint = 'Anxiety and stress related disorders (Total)' AND SecondaryPresentingComplaint = 'Other F40-F43 code' THEN 'Other F40 to 43 - Other Anxiety'
 			WHEN PrimaryPresentingComplaint = 'Anxiety and stress related disorders (Total)' AND SecondaryPresentingComplaint IS NULL THEN 'No Code' 
 			ELSE 'Other' END
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END
 
 UNION ----------------------------------------------------------------- 
 
-SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -339,10 +351,10 @@ SELECT  DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Re
 		,'IMD' AS Category
 		,CAST([IMD_Decile] AS Varchar) AS 'Variable'
 		,'Refresh' AS DataSource
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL) then 'Non-F2F' END as 'F2F status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL) THEN 'Non-F2F' END AS 'F2F status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -354,15 +366,18 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		----------------------------
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_PDT_CareContactBase] a ON r.PathwayID = a.PathwayID AND a.AuditId = l.AuditId  
 		---------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 		---------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -372,10 +387,10 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 		,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END
 		,CAST([IMD_Decile] AS Varchar)
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
-		,case when [Face to face communication] > 0 then 'F2F'
-			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  then 'Non-F2F' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
+		,CASE WHEN [Face to face communication] > 0 THEN 'F2F'
+			when ([Face to face communication] = 0 OR [Face to face communication] IS NULL)  THEN 'Non-F2F' END
 )_
 
 PRINT 'Updated - [NHSE_Sandbox_MentalHealth].[dbo].[IAPT_Dashboard_IETF2FSplit]'
@@ -384,7 +399,7 @@ PRINT 'Updated - [NHSE_Sandbox_MentalHealth].[dbo].[IAPT_Dashboard_IETF2FSplit]'
 
 INSERT INTO [MHDInternal].[DASHBOARD_TTAD_PDT_IETAcuteReferrals]
 
-SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month
+SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month
 		,'England' AS 'GroupType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'Region Code'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'Region Name'
@@ -395,8 +410,8 @@ SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.Rep
 		,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END AS 'STP Code'
 		,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END AS 'STP Name'
 		,'Refresh' AS DataSource
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END as 'IET status'
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END AS 'IET status'
 		,COUNT( DISTINCT CASE WHEN Recovery_Flag = 'True' AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountRecovered'
 		,COUNT( DISTINCT CASE WHEN CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountFinishedTreatment'
 		,COUNT( DISTINCT CASE WHEN NotCaseness_Flag = 'True'  AND CompletedTreatment_Flag = 'True' AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate THEN r.PathwayID ELSE NULL END) AS 'CountNotCaseness'
@@ -408,13 +423,16 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		---------------------------
 		INNER JOIN [MHDInternal].[PreProc_Referral] ppr ON mpi.[Pseudo_NHS_Number_NCDR] = ppr.[Der_Pseudo_NHS_Number] AND ppr.ReferralRequestReceivedDate >= r.ServDischDate
 		---------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
@@ -423,8 +441,8 @@ GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.R
 		,CASE WHEN ph.[Organisation_Name] IS NOT NULL THEN ph.[Organisation_Name] ELSE 'Other' END
 		,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END
-		,case when r.[InternetEnabledTherapy_Count] > 0 then 'IET'
-			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) then 'Non-IET' END
+		,CASE WHEN r.[InternetEnabledTherapy_Count] > 0 THEN 'IET'
+			when (r.[InternetEnabledTherapy_Count] = 0 OR r.[InternetEnabledTherapy_Count] IS NULL) THEN 'Non-IET' END
 
 -----------------------------------------------------------------------------
 PRINT 'Updated - [NHSE_Sandbox_MentalHealth].[dbo].[IAPT_IETAcuteReferrals]'
@@ -439,7 +457,7 @@ SELECT * FROM
 
 (
 
-SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'National' AS 'OrgType'
 		,'England' AS 'OrgCode'
 		,'England' AS 'OrgName'
@@ -464,11 +482,11 @@ FROM	[mesh_IAPT].[IDS101referral] r
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 	
 UNION ----------------------------------------------------------------- 
 
-SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'Regional' AS 'OrgType'
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END AS 'OrgCode'
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END AS 'OrgName'
@@ -488,21 +506,24 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Region_Code] IS NOT NULL THEN ch.[Region_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 
 UNION -----------------------------------------------------------------
 
-SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'STP' AS 'OrgType'
 		,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END AS 'STP Code'
 		,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END AS 'STP Name'
@@ -522,22 +543,25 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
  WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[STP_Code] IS NOT NULL THEN ch.[STP_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[STP_Name] IS NOT NULL THEN ch.[STP_Name] ELSE 'Other' END
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END
 
 UNION -----------------------------------------------------------------
 
-SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar) AS Month 
+SELECT	DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR) AS Month 
 		,'CCG' AS 'OrgType'
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END AS 'OrgCode'
 		,CASE WHEN ch.[Organisation_Name] IS NOT NULL THEN ch.[Organisation_Name] ELSE 'Other' END AS 'OrgName'
@@ -557,23 +581,24 @@ FROM	[mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [mesh_IAPT].[IDS201carecontact] cc ON r.PathwayID = cc.PathwayID AND cc.AuditId = l.AuditId AND ([AttendOrDNACode] in ('5','6') or PlannedCareContIndicator = 'N') AND AppType IN ('01','02','03','05')
 		LEFT JOIN [mesh_IAPT].[IDS205internettherlog] iet ON cc.[AuditId] = iet.[AuditId] AND cc.ServiceRequestId = iet.ServiceRequestId
 		-----------------------------------------
-		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON r.OrgIDComm = ch.Organisation_Code AND ch.Effective_To IS NULL
-		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON r.OrgID_Provider = ph.Organisation_Code AND ph.Effective_To IS NULL
+		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
+		---------------------------
+		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
 		-----------------------------------------
 		LEFT JOIN [UKHF_Demography].[Domains_Of_Deprivation_By_LSOA1] IMD ON mpi.LSOA = IMD.[LSOA_Code]
 
 WHERE	UsePathway_Flag = 'True' AND IsLatest = 1
 		AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @Period_Start) AND @Period_Start
 		
-GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS varchar)
+GROUP BY DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingPeriodStartDate) AS VARCHAR)
 		,CASE WHEN ch.[Organisation_Code] IS NOT NULL THEN ch.[Organisation_Code] ELSE 'Other' END 
 		,CASE WHEN ch.[Organisation_Name] IS NOT NULL THEN ch.[Organisation_Name] ELSE 'Other' END
 		,CASE WHEN ch.[Region_Name] IS NOT NULL THEN ch.[Region_Name] ELSE 'Other' END 
 )_
 
 -- Drop Temporary Table --------------------------------------
-
 DROP TABLE [MHDInternal].[TEMP_TTAD_PDT_CareContactBase]
-
 ----------------------------------------------------------------------
 PRINT 'Updated - [MHDInternal].[DASHBOARD_TTAD_PDT_IET_F2FAverages]'
