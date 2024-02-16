@@ -1,9 +1,5 @@
---Please note this information is experimental and it is only intended for use for management purposes.
-
-/****** Script for Employment Support Dashboard to produce tables for Employment Support Outcomes, National Recording of Employment Status and Sickness Absence,and Clinical Outcomes******/
 
 -- DELETE MAX(Month) -----------------------------------------------------------------------
---Delete the latest month from the following two tables so that the refreshed version of that month can be added.
 --Only two tables in this script require this as the rest run the full time period from September 2020 each month.
 
 DELETE FROM [MHDInternal].[DASHBOARD_TTAD_EmpSupp_OpenRefsNoContact]
@@ -16,15 +12,20 @@ WHERE [Month] = (SELECT MAX([Month]) FROM [MHDInternal].[DASHBOARD_TTAD_EmpSupp_
 --There is currently an issue with EmploymentSupport_Count field in IDS101referral table so we are calculating the number of employment support appointments in this table
 --This is based on the criteria specified for this field in the Technical Output Specification
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_EmpSupp_EmpSuppCount]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_EmpSupp_EmpSuppCount]
+
 SELECT  
     r.PathwayID
 	,COUNT(DISTINCT CASE WHEN c.CareContDate BETWEEN l.ReportingPeriodStartDate and l.ReportingPeriodEndDate THEN c.CareContactID ELSE NULL END) AS Count_EmpSupp
+
 INTO [MHDInternal].[TEMP_TTAD_EmpSupp_EmpSuppCount]
-FROM [mesh_IAPT].IDS101referral r
-INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
-LEFT JOIN [mesh_IAPT].[IDS201carecontact] c ON c.RecordNumber=r.RecordNumber AND r.[UniqueSubmissionID] = c.[UniqueSubmissionID] AND r.[AuditId] = c.[AuditId]
-LEFT JOIN [mesh_IAPT].[IDS202careactivity] ca on c.PathwayID = ca.PathwayID and c.RecordNumber=ca.RecordNumber and c.CareContactID=ca.CareContactID and c.AuditId=ca.AuditId 
-LEFT JOIN [mesh_IAPT].[IDS004empstatus] e ON r.RecordNumber=e.RecordNumber AND r.AuditId=e.AuditId
+
+FROM 	[mesh_IAPT].IDS101referral r
+		-----------------------------
+		INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[UniqueSubmissionID] AND r.[AuditId] = l.[AuditId]
+		-----------------------------
+		LEFT JOIN [mesh_IAPT].[IDS201carecontact] c ON c.RecordNumber=r.RecordNumber AND r.[UniqueSubmissionID] = c.[UniqueSubmissionID] AND r.[AuditId] = c.[AuditId]
+		LEFT JOIN [mesh_IAPT].[IDS202careactivity] ca on c.PathwayID = ca.PathwayID and c.RecordNumber=ca.RecordNumber and c.CareContactID=ca.CareContactID and c.AuditId=ca.AuditId 
+		LEFT JOIN [mesh_IAPT].[IDS004empstatus] e ON r.RecordNumber=e.RecordNumber AND r.AuditId=e.AuditId
 
 WHERE l.IsLatest = 1 
 AND (c.AttendOrDNACode IN (5,6) OR c.PlannedCareContIndicator='N') 
@@ -56,19 +57,12 @@ GO
 --Employment Support Outcomes Base Table
 --This table produces a record level table for the refresh period defined below, as a basis for the output table produced further below ([MHDInternal].[DASHBOARD_TTAD_EmpSupp_FirstAndLastEmp])
 
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
---For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE  = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2='2020-09-01' --this should always be September 2020
+DECLARE @PeriodStart2 DATE = '2020-09-01' -- this should always be September 2020
 
 SET DATEFIRST 1
-
-PRINT @PeriodStart
-PRINT @PeriodEnd
 
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_EmpSupp_Base]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_EmpSupp_Base]
 SELECT * 
@@ -160,7 +154,7 @@ DATENAME(m, l.ReportingPeriodStartDate) + ' ' + CAST(DATEPART(yyyy, l.ReportingP
 		ELSE 'Unknown/Not Stated If Benefit Received'
 		END AS 'GeneralBenefitReceived'
 
-	  --Protected characteristics
+--Protected characteristics
 ----------------Gender
 		,CASE WHEN mpi.Gender IN ('1','01') THEN 'Male'
 			WHEN mpi.Gender IN ('2','02') THEN 'Female'
@@ -245,15 +239,13 @@ FROM [mesh_IAPT].[IDS101referral] r
 		LEFT JOIN [MHDInternal].[TEMP_TTAD_EmpSupp_EmpSuppCount] ec ON ec.PathwayID=r.PathwayID
 
 		LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-			AND ch.Effective_To IS NULL
+		LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default AND ch.Effective_To IS NULL
 		LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-		LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-			AND ph.Effective_To IS NULL
-		--Four tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes
+		LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+
 WHERE r.UsePathway_Flag = 'True' 
-		AND l.IsLatest = 1	--To get the latest data
-		AND r.CompletedTreatment_Flag = 'True'	--Data is filtered to only look at those who have completed a course of treatment
+		AND l.IsLatest = 1	
+		AND r.CompletedTreatment_Flag = 'True'
 		AND r.ServDischDate BETWEEN l.ReportingPeriodStartDate AND l.ReportingPeriodEndDate	
 		AND l.[ReportingPeriodStartDate] BETWEEN @PeriodStart2 AND @PeriodStart
 		and emp.RecordNumber is not null
@@ -403,7 +395,6 @@ SELECT
 INTO [MHDInternal].[TEMP_TTAD_EmpSupp_Base2]
 FROM [MHDInternal].[TEMP_TTAD_EmpSupp_Base]
 
-
 --Aggregated Output for National Recording of Employment Status and Sickness Absence
 
 --National, Any appointment type
@@ -444,21 +435,16 @@ WHERE Count_EmpSupp>0
 GROUP BY Month
 GO
 
-  -----------------------------------------------------------------------------------------------------------------------------------------------
-  -----------------------------------------------------------Clinical Outcomes-------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------
+-- Clinical Outcomes------------------------------------------------------------------------------------------------------------------------------
 
---Clinical Outcomes Base Table
---This produces a table with a unique record in each row and each flag that is true is assigned the value of 1 so that they can be summed to produce the relevant aggregated value in the table below [MHDInternal].[DASHBOARD_TTAD_EmpSupp_ClinOutcomes]
+-- Base Table produces a table with a unique record in each row and each flag that is true is assigned the value of 1 so that they can be summed 
+-- to produce the relevant aggregated value in the table below [MHDInternal].[DASHBOARD_TTAD_EmpSupp_ClinOutcomes]
 
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
---For refreshing, the offset (for getting the period start and end) should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+
 SET DATEFIRST 1
-
-PRINT @PeriodStart
-PRINT @PeriodEnd
 
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_EmpSupp_Clin_Base]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_EmpSupp_Clin_Base]
 SELECT DISTINCT
@@ -656,6 +642,7 @@ SELECT DISTINCT
 	END AS 'ProblemDescriptor'
 
 INTO [MHDInternal].[TEMP_TTAD_EmpSupp_Clin_Base]
+
 FROM [mesh_IAPT].[IDS101referral] r
 	INNER JOIN [mesh_IAPT].[IDS001mpi] mpi ON r.recordnumber = mpi.recordnumber
 	--Provides data for gender, validated ethnic category and gender identity
@@ -669,12 +656,10 @@ FROM [mesh_IAPT].[IDS101referral] r
 	LEFT JOIN [MHDInternal].[TEMP_TTAD_EmpSupp_EmpSuppCount] ec ON ec.PathwayID=r.PathwayID
 
 	LEFT JOIN [Internal_Reference].[ComCodeChanges] cc ON r.OrgIDComm = cc.Org_Code COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Commissioner_Hierarchies_ICB] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default 
-		AND ch.Effective_To IS NULL
+	LEFT JOIN [Reporting_UKHD_ODS].[Commissioner_Hierarchies] ch ON COALESCE(cc.New_Code, r.OrgIDComm) = ch.Organisation_Code COLLATE database_default  AND ch.Effective_To IS NULL
 	LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
-		AND ph.Effective_To IS NULL
-	--Four tables for getting the up-to-date Sub-ICB/ICB/Region/Provider names/codes
+	LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default AND ph.Effective_To IS NULL
+	
 WHERE UsePathway_Flag = 'True' 
 	AND l.[ReportingPeriodStartDate] BETWEEN DATEADD(MONTH, -1, @PeriodStart) AND @PeriodStart	--for monthly refresh the offset should be -1 as we want the data for the latest 2 months month (i.e. to refresh the previous month's primary data)
 	AND IsLatest = 1	--To get the latest data
