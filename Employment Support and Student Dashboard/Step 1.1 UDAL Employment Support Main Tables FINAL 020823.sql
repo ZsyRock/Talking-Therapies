@@ -1779,7 +1779,7 @@ SELECT
 	,SUM(AllCompTreatFlagRelDetFlag) as ReliableDeteriorationFlag
 	
 FROM [MHDInternal].[TEMP_TTAD_EmpSupp_Clin_Base]
-WHERE AllEmploymentSupport_Count=0
+WHERE AllEmploymentSupport_Count = 0
 GROUP BY
 	Month
 	,RegionNameComm

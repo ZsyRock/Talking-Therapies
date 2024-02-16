@@ -1,8 +1,8 @@
-/****** Script for Employment Support Dashboard to produce the Presenteeism Table******/
 
---Base Table
---This table produces a version of the IDS606 table filtered for the three assessment questions (questions 7, 8 and 9) about presenteeism from the Institute for Medical Technology Assessment Productivity Cost Questionnaire,
---filtered for the latest audit IDs and the first and last responses to these questions labelled (through ranking) for use later in the query
+-- Base Table ----------------------------------------------------------------------------------------------------------------------------
+-- This table produces a version of the IDS606 table filtered for the three assessment questions (questions 7, 8 and 9) about presenteeism 
+-- from the Institute for Medical Technology Assessment Productivity Cost Questionnaire, filtered for the latest audit IDs and the first 
+-- and last responses to these questions labelled (through ranking) for use later in the query
 
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_EmpSupp_CodedAssessReferral]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_EmpSupp_CodedAssessReferral]
 SELECT DISTINCT	
@@ -16,7 +16,9 @@ SELECT DISTINCT
 	--This labels each record so that the last response to each assessment question has a value of 1. This is based on ordering each record with the same pathway ID and coded assessment tool type (i.e. assessment question) 
 	--by the assessment tool completion date
 	,ROW_NUMBER() OVER (PARTITION BY sub.PathwayID, sub.[CodedAssToolType] ORDER BY sub.[AssToolCompDate] desc,[AssToolCompTime] desc) AS ROWID1
+
 INTO [MHDInternal].[TEMP_TTAD_EmpSupp_CodedAssessReferral]
+
 FROM
 	(SELECT DISTINCT --this subquery produces a table with all fields in the IDS606 table, filtered for the three assessment questions of interest and first responses to these questions have a value of 1
 		a.*
@@ -42,24 +44,19 @@ FROM
 		WHERE (CodedAssToolType IN ('748161000000109','760741000000102','761051000000105'))	--The SNOMED CT concept IDs for question 7, 8 and 9 of the Institute for Medical Technology Assessment Productivity Cost Questionnaire
 		) sub
 	LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON sub.OrgID_Provider = ps.Prov_original COLLATE database_default
-	LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, sub.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
+	LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, sub.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
 		AND ph.Effective_To IS NULL
 	--For getting the up-to-date Provider names/codes
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 --Period start and period end are defined for the next part of the query:
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
---For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2='2020-09-01' --this should always be September 2020
+--For refreshing, the offset for getting the period start and end should be 0 to get the latest month
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+
+DECLARE @PeriodStart2 DATE = '2020-09-01' --this should always be September 2020
 
 SET DATEFIRST 1
-
-PRINT @PeriodStart
-PRINT @PeriodEnd
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------
 --Question 7: During the last 2 weeks have there been days in which you worked but during this time were bothered by physical or psychological problems?	
@@ -290,19 +287,14 @@ GO
 -----------
 --This produces a base table with one row per referral with the number of presenteeism assessments
 --Period start and period end are defined for the next part of the query:
-DECLARE @PeriodStart DATE
-DECLARE @PeriodEnd DATE 
---For refreshing, the offset for getting the period start and end should be 0 to get the latest month
-SET @PeriodStart = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
-SET @PeriodEnd = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
 
-DECLARE @PeriodStart2 DATE
-SET @PeriodStart2='2020-09-01' --this should always be September 2020
+--For refreshing, the offset for getting the period start and end should be 0 to get the latest month
+DECLARE @PeriodStart DATE = (SELECT DATEADD(MONTH,0,MAX([ReportingPeriodStartDate])) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+DECLARE @PeriodEnd DATE = (SELECT eomonth(DATEADD(MONTH,0,MAX([ReportingPeriodEndDate]))) FROM [mesh_IAPT].[IsLatest_SubmissionID])
+
+DECLARE @PeriodStart2 DATE = '2020-09-01' --this should always be September 2020
 
 SET DATEFIRST 1
-
-PRINT @PeriodStart
-PRINT @PeriodEnd
 
 IF OBJECT_ID ('[MHDInternal].[TEMP_TTAD_EmpSupp_PresenteeismCoverage2]') IS NOT NULL DROP TABLE [MHDInternal].[TEMP_TTAD_EmpSupp_PresenteeismCoverage2]
 SELECT DISTINCT
@@ -323,7 +315,7 @@ INNER JOIN [mesh_IAPT].[IsLatest_SubmissionID] l ON r.[UniqueSubmissionID] = l.[
 
 LEFT JOIN [MHDInternal].[TEMP_TTAD_EmpSupp_PresenteeismCoverage] p ON r.PathwayID=p.PathwayID
 LEFT JOIN [Internal_Reference].[Provider_Successor] ps ON r.OrgID_Provider = ps.Prov_original COLLATE database_default
-LEFT JOIN [Reporting].[Ref_ODS_Provider_Hierarchies_ICB] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
+LEFT JOIN [Reporting_UKHD_ODS].[Provider_Hierarchies] ph ON COALESCE(ps.Prov_Successor, r.OrgID_Provider) = ph.Organisation_Code COLLATE database_default
 	AND ph.Effective_To IS NULL
 
 WHERE ((r.ServDischDate IS NULL AND r.ReferralRequestReceivedDate<=l.ReportingPeriodEndDate) --open referrals
